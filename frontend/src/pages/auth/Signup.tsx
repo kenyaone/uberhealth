@@ -31,7 +31,7 @@ export default function Signup() {
     try {
       const res = await api.post('/auth/signup/', data)
       setAuth(res.data.user, res.data.access, res.data.refresh)
-      navigate('/dashboard')
+      navigate(res.data.user.role === 'professional' ? '/apply' : '/dashboard')
     } catch (err: any) {
       const errs = err.response?.data
       setError(errs?.username?.[0] || errs?.password?.[0] || errs?.email?.[0] || 'Signup failed. Try again.')

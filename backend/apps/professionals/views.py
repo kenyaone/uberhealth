@@ -89,3 +89,54 @@ class LanguageListView(generics.ListAPIView):
     serializer_class = LanguageSerializer
     permission_classes = [AllowAny]
     queryset = Language.objects.all()
+
+
+# ── Admin endpoints ──────────────────────────────────────────────────────────
+
+class IsAdminUser(IsAuthenticated):
+    def has_permission(self, request, view):
+        return super().has_permission(request, view) and request.user.role == 'admin'
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def pending_applications(request):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin only.'}, status=status.HTTP_403_FORBIDDEN)
+    qs = Professional.objects.filter(
+        verification_status='pending'
+    ).select_related('user').prefetch_related('specializations', 'languages').order_by('id')
+    return Response(ProfessionalSerializer(qs, many=True).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def verify_professional(request, pk):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin only.'}, status=status.HTTP_403_FORBIDDEN)
+    action = request.data.get('action')  # 'approve' or 'reject'
+    if action not in ['approve', 'reject']:
+        return Response({'error': 'action must be approve or reject.'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        professional = Professional.objects.get(pk=pk)
+    except Professional.DoesNotExist:
+        return Response({'error': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    professional.verification_status = 'verified' if action == 'approve' else 'rejected'
+    professional.save()
+    return Response({
+        'message': f'Professional {"approved" if action == "approve" else "rejected"}.',
+        'professional': ProfessionalSerializer(professional).data,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def all_professionals_admin(request):
+    if request.user.role != 'admin':
+        return Response({'error': 'Admin only.'}, status=status.HTTP_403_FORBIDDEN)
+    status_filter = request.query_params.get('status')
+    qs = Professional.objects.select_related('user').prefetch_related('specializations', 'languages')
+    if status_filter:
+        qs = qs.filter(verification_status=status_filter)
+    return Response(ProfessionalSerializer(qs.order_by('-id'), many=True).data)

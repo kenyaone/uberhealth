@@ -1,20 +1,41 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, ClipboardList, Users, Calendar,
-  Heart, TrendingUp, User, Leaf
+  Heart, TrendingUp, User, Leaf, ShieldCheck, Stethoscope
 } from 'lucide-react'
-
-const links = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/assessments', icon: ClipboardList, label: 'Assessments' },
-  { to: '/professionals', icon: Users, label: 'Find Therapist' },
-  { to: '/consultations', icon: Calendar, label: 'My Sessions' },
-  { to: '/mood', icon: Heart, label: 'Mood Tracker' },
-  { to: '/sobriety', icon: TrendingUp, label: 'Sobriety' },
-  { to: '/profile', icon: User, label: 'Profile' },
-]
+import { useAuthStore } from '../../store/authStore'
 
 export default function Sidebar() {
+  const user = useAuthStore(s => s.user)
+  const isAdmin = user?.role === 'admin'
+  const isProfessional = user?.role === 'professional'
+
+  const userLinks = [
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/assessments', icon: ClipboardList, label: 'Assessments' },
+    { to: '/professionals', icon: Users, label: 'Find Therapist' },
+    { to: '/consultations', icon: Calendar, label: 'My Sessions' },
+    { to: '/mood', icon: Heart, label: 'Mood Tracker' },
+    { to: '/sobriety', icon: TrendingUp, label: 'Sobriety' },
+    { to: '/profile', icon: User, label: 'Profile' },
+  ]
+
+  const professionalLinks = [
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/consultations', icon: Calendar, label: 'My Sessions' },
+    { to: '/profile', icon: User, label: 'Profile' },
+    { to: '/apply', icon: Stethoscope, label: 'My Application' },
+  ]
+
+  const adminLinks = [
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/admin', icon: ShieldCheck, label: 'Verify Professionals' },
+    { to: '/professionals', icon: Users, label: 'All Professionals' },
+    { to: '/profile', icon: User, label: 'Profile' },
+  ]
+
+  const links = isAdmin ? adminLinks : isProfessional ? professionalLinks : userLinks
+
   return (
     <aside className="w-64 bg-primary-900 text-white flex flex-col">
       <div className="p-5 border-b border-primary-800">

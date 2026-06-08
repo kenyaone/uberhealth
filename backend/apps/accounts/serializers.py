@@ -18,6 +18,11 @@ class SignupSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs['password'] != attrs.pop('password_confirm'):
             raise serializers.ValidationError({'password': 'Passwords do not match.'})
+        # Convert empty strings to None for optional unique fields
+        if not attrs.get('email'):
+            attrs['email'] = None
+        if not attrs.get('phone'):
+            attrs['phone'] = None
         return attrs
 
     def create(self, validated_data):

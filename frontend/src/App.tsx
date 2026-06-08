@@ -15,6 +15,8 @@ import MoodTracker from './pages/phr/MoodTracker'
 import SobrietyTracker from './pages/phr/SobrietyTracker'
 import Profile from './pages/Profile'
 import Landing from './pages/Landing'
+import ApplyAsProfessional from './pages/apply/ApplyAsProfessional'
+import AdminDashboard from './pages/admin/AdminDashboard'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -46,6 +48,8 @@ export default function App() {
           <Route path="/mood" element={<MoodTracker />} />
           <Route path="/sobriety" element={<SobrietyTracker />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/apply" element={<ApplyAsProfessional />} />
+          <Route path="/admin" element={<AdminDashboard />} />
         </Route>
       </Routes>
     </BrowserRouter>

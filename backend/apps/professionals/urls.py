@@ -8,4 +8,8 @@ urlpatterns = [
     path('me/', views.my_professional_profile, name='my-professional-profile'),
     path('specializations/', views.SpecializationListView.as_view(), name='specialization-list'),
     path('languages/', views.LanguageListView.as_view(), name='language-list'),
+    # Admin
+    path('admin/pending/', views.pending_applications, name='pending-applications'),
+    path('admin/all/', views.all_professionals_admin, name='all-professionals-admin'),
+    path('admin/<int:pk>/verify/', views.verify_professional, name='verify-professional'),
 ]

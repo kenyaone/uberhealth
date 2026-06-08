@@ -9,7 +9,7 @@ class User(AbstractUser):
     ROLE_CHOICES = [(ROLE_USER, 'User'), (ROLE_PROFESSIONAL, 'Professional'), (ROLE_ADMIN, 'Admin')]
 
     display_name = models.CharField(max_length=100, help_text='Name shown to professionals. Can be pseudonym.')
-    email = models.EmailField(blank=True, null=True, unique=True)
+    email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=15, blank=True, null=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_USER)
     is_anonymous_mode = models.BooleanField(default=True)
