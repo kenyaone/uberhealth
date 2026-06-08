@@ -17,6 +17,10 @@ import Profile from './pages/Profile'
 import Landing from './pages/Landing'
 import ApplyAsProfessional from './pages/apply/ApplyAsProfessional'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import RevenueDashboard from './pages/admin/RevenueDashboard'
+import Pricing from './pages/pricing/Pricing'
+import Subscribe from './pages/subscribe/Subscribe'
+import Corporate from './pages/corporate/Corporate'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -50,6 +54,10 @@ export default function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/apply" element={<ApplyAsProfessional />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/revenue" element={<RevenueDashboard />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/subscribe" element={<Subscribe />} />
+          <Route path="/corporate" element={<Corporate />} />
         </Route>
       </Routes>
     </BrowserRouter>

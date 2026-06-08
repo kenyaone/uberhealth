@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, ClipboardList, Users, Calendar,
-  Heart, TrendingUp, User, Leaf, ShieldCheck, Stethoscope
+  Heart, TrendingUp, User, Leaf, ShieldCheck, Stethoscope,
+  DollarSign, Tag
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 
@@ -30,11 +31,19 @@ export default function Sidebar() {
   const adminLinks = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/admin', icon: ShieldCheck, label: 'Verify Professionals' },
+    { to: '/admin/revenue', icon: DollarSign, label: 'Revenue' },
     { to: '/professionals', icon: Users, label: 'All Professionals' },
     { to: '/profile', icon: User, label: 'Profile' },
   ]
 
-  const links = isAdmin ? adminLinks : isProfessional ? professionalLinks : userLinks
+  // Add Pricing link for regular users
+  const userLinksWithPricing = [
+    ...userLinks.slice(0, -1),
+    { to: '/pricing', icon: Tag, label: 'Upgrade Plan' },
+    userLinks[userLinks.length - 1],
+  ]
+
+  const links = isAdmin ? adminLinks : isProfessional ? professionalLinks : userLinksWithPricing
 
   return (
     <aside className="w-64 bg-primary-900 text-white flex flex-col">

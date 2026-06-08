@@ -24,6 +24,8 @@ INSTALLED_APPS = [
     'apps.phr',
     'apps.payments',
     'apps.crisis',
+    'apps.subscriptions',
+    'apps.corporate',
 ]
 
 MIDDLEWARE = [
@@ -116,3 +118,9 @@ JITSI_APP_SECRET = config('JITSI_APP_SECRET', default='')
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
 
 PLATFORM_COMMISSION_RATE = 0.20  # 20% platform, 80% professional
+
+# M-Pesa B2C (professional payouts)
+MPESA_B2C_INITIATOR_NAME = config('MPESA_B2C_INITIATOR_NAME', default='testapi')
+MPESA_B2C_SECURITY_CREDENTIAL = config('MPESA_B2C_SECURITY_CREDENTIAL', default='')
+MPESA_B2C_TIMEOUT_URL = config('MPESA_B2C_TIMEOUT_URL', default='https://mhapke.com/api/payments/b2c/timeout/')
+MPESA_B2C_RESULT_URL = config('MPESA_B2C_RESULT_URL', default='https://mhapke.com/api/payments/b2c/result/')

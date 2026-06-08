@@ -4,4 +4,6 @@ from . import views
 urlpatterns = [
     path('mpesa/callback/', views.mpesa_callback, name='mpesa-callback'),
     path('status/<str:consultation_id>/', views.payment_status, name='payment-status'),
+    path('payout/<int:payout_id>/trigger/', views.trigger_payout, name='trigger-payout'),
+    path('revenue/', views.revenue_dashboard, name='revenue-dashboard'),
 ]
