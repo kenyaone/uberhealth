@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, ClipboardList, Users, Calendar,
   Heart, TrendingUp, User, Leaf, ShieldCheck, Stethoscope,
-  DollarSign, Tag
+  DollarSign, Tag, BookOpen
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 
@@ -18,6 +18,7 @@ export default function Sidebar() {
     { to: '/consultations', icon: Calendar, label: 'My Sessions' },
     { to: '/mood', icon: Heart, label: 'Mood Tracker' },
     { to: '/sobriety', icon: TrendingUp, label: 'Sobriety' },
+    { to: '/lessons', icon: BookOpen, label: 'Recovery Library' },
     { to: '/profile', icon: User, label: 'Profile' },
   ]
 
@@ -53,8 +54,8 @@ export default function Sidebar() {
             <Leaf size={20} className="text-white" />
           </div>
           <div>
-            <div className="font-bold text-lg leading-tight">MHAP Kenya</div>
-            <div className="text-primary-300 text-xs">Mental Health Platform</div>
+            <div className="font-bold text-base leading-tight">Afya Yako Siri Yako</div>
+            <div className="text-primary-300 text-xs">Your Health, Your Secret</div>
           </div>
         </div>
       </div>

@@ -21,6 +21,8 @@ import RevenueDashboard from './pages/admin/RevenueDashboard'
 import Pricing from './pages/pricing/Pricing'
 import Subscribe from './pages/subscribe/Subscribe'
 import Corporate from './pages/corporate/Corporate'
+import Lessons from './pages/lessons/Lessons'
+import LessonDetail from './pages/lessons/LessonDetail'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -58,6 +60,8 @@ export default function App() {
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/subscribe" element={<Subscribe />} />
           <Route path="/corporate" element={<Corporate />} />
+          <Route path="/lessons" element={<Lessons />} />
+          <Route path="/lessons/:slug" element={<LessonDetail />} />
         </Route>
       </Routes>
     </BrowserRouter>

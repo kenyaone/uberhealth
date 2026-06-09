@@ -28,22 +28,29 @@ export default function MoodTracker() {
   const [logs, setLogs] = useState<MoodLog[]>([])
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const { register, handleSubmit, setValue, watch, reset } = useForm<MoodForm>({
     defaultValues: { logged_at: new Date().toISOString().slice(0, 16) }
   })
   const selectedMood = watch('mood')
 
   useEffect(() => {
-    api.get('/phr/mood/?days=30').then(r => setLogs(r.data.results || r.data))
+    api.get('/phr/mood?days=30').then(r => {
+      const raw = r.data.data ?? r.data.results ?? r.data
+      setLogs(Array.isArray(raw) ? raw : [])
+    }).catch(() => setLogs([]))
   }, [])
 
   const onSubmit = async (data: MoodForm) => {
     setSaving(true)
+    setSubmitError('')
     try {
-      const res = await api.post('/phr/mood/', data)
+      const res = await api.post('/phr/mood', data)
       setLogs(prev => [res.data, ...prev])
       setShowForm(false)
       reset()
+    } catch (e: any) {
+      setSubmitError(e.response?.data?.error || 'Failed to save. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -62,7 +69,7 @@ export default function MoodTracker() {
           <h1 className="text-2xl font-bold text-gray-900">Mood Tracker</h1>
           <p className="text-gray-500 text-sm mt-1">Track how you feel each day.</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="btn-primary flex items-center gap-2">
+        <button onClick={() => { setShowForm(!showForm); setSubmitError('') }} className="btn-primary flex items-center gap-2">
           <Plus size={16} /> Log Mood
         </button>
       </div>
@@ -128,11 +135,15 @@ export default function MoodTracker() {
             <input {...register('logged_at')} type="datetime-local" className="input-field" />
           </div>
 
+          {submitError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{submitError}</div>
+          )}
+
           <div className="flex gap-3">
             <button type="submit" disabled={saving || !selectedMood} className="btn-primary flex-1">
               {saving ? 'Saving...' : 'Save Mood Log'}
             </button>
-            <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+            <button type="button" onClick={() => { setShowForm(false); setSubmitError('') }} className="btn-secondary flex-1">Cancel</button>
           </div>
         </form>
       )}

@@ -2,169 +2,359 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
-import type { Professional } from '../../types'
-import { CheckCircle, XCircle, Clock, Users, Star, ChevronDown, ChevronUp } from 'lucide-react'
+import { format } from 'date-fns'
+import {
+  CheckCircle, XCircle, Clock, Users, Star,
+  ChevronDown, ChevronUp, BarChart2, DollarSign, AlertCircle, RotateCcw, Video
+} from 'lucide-react'
+
+interface ProfRow {
+  id: number
+  kmpdc_license: string
+  bio: string
+  years_experience: number
+  gender: string
+  rate_per_hour: number
+  mpesa_number: string
+  verification_status: string
+  rating: number
+  total_sessions: number
+  created_at: string
+  user: { id: number; username: string; display_name: string; email: string; phone: string }
+  specializations: { id: number; name: string }[]
+  languages: { id: number; name: string }[]
+}
+
+interface Stats {
+  total_users: number
+  total_professionals: number
+  total_consultations: number
+  total_revenue_kes: number
+  crisis_events_total: number
+  crisis_events_unresolved: number
+}
 
 type TabType = 'pending' | 'verified' | 'rejected'
+type MainTab = 'professionals' | 'sessions'
+
+const TAB_LABEL: Record<TabType, string> = {
+  pending: 'Pending Review',
+  verified: 'Approved',
+  rejected: 'Rejected',
+}
+
+interface ConsultRow {
+  id: number
+  consultation_id: string
+  status: string
+  scheduled_at: string
+  duration_minutes: number
+  amount: number
+  user: { display_name: string; username: string }
+  professional: { user: { display_name: string } }
+}
 
 export default function AdminDashboard() {
   const user = useAuthStore(s => s.user)
   const navigate = useNavigate()
+  const [mainTab, setMainTab] = useState<MainTab>('professionals')
   const [tab, setTab] = useState<TabType>('pending')
-  const [professionals, setProfessionals] = useState<Professional[]>([])
+  const [professionals, setProfessionals] = useState<ProfRow[]>([])
+  const [consultations, setConsultations] = useState<ConsultRow[]>([])
+  const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState<number | null>(null)
   const [expanded, setExpanded] = useState<number | null>(null)
+  const [confirmingId, setConfirmingId] = useState<number | null>(null)
 
   useEffect(() => {
     if (user?.role !== 'admin') { navigate('/dashboard'); return }
-    fetchProfessionals(tab)
+    api.get('/admin/stats').then(r => setStats(r.data)).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return
+    setLoading(true)
+    api.get(`/admin/professionals?status=${tab}`)
+      .then(r => setProfessionals(r.data.data ?? r.data))
+      .catch(() => setProfessionals([]))
+      .finally(() => setLoading(false))
   }, [tab])
 
-  const fetchProfessionals = (statusFilter: string) => {
-    setLoading(true)
-    api.get(`/professionals/admin/all/?status=${statusFilter}`)
-      .then(r => setProfessionals(r.data))
-      .finally(() => setLoading(false))
+  useEffect(() => {
+    if (user?.role !== 'admin') return
+    if (mainTab === 'sessions') {
+      setLoading(true)
+      api.get('/admin/consultations')
+        .then(r => setConsultations(r.data.data ?? r.data))
+        .catch(() => setConsultations([]))
+        .finally(() => setLoading(false))
+    }
+  }, [mainTab])
+
+  const handleConfirmPayment = async (id: number) => {
+    setConfirmingId(id)
+    try {
+      await api.put(`/admin/consultations/${id}/confirm`)
+      setConsultations(prev => prev.map(c => c.id === id ? { ...c, status: 'confirmed' } : c))
+    } catch { alert('Failed to confirm.') }
+    finally { setConfirmingId(null) }
   }
 
   const handleAction = async (id: number, action: 'approve' | 'reject') => {
     setActing(id)
     try {
-      await api.post(`/professionals/admin/${id}/verify/`, { action })
+      await api.put(`/admin/professionals/${id}/verify`, { action })
       setProfessionals(prev => prev.filter(p => p.id !== id))
+    } catch {
+      alert('Action failed. Please try again.')
     } finally {
       setActing(null)
     }
   }
 
-  const counts = { pending: 0, verified: 0, rejected: 0 }
-
-  const TABS: { key: TabType; label: string; icon: any; color: string }[] = [
-    { key: 'pending', label: 'Pending Review', icon: Clock, color: 'text-amber-600' },
-    { key: 'verified', label: 'Approved', icon: CheckCircle, color: 'text-green-600' },
-    { key: 'rejected', label: 'Rejected', icon: XCircle, color: 'text-red-500' },
-  ]
-
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Admin — Professional Verification</h1>
-        <p className="text-gray-500 text-sm mt-1">Review and approve therapist applications.</p>
+        <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+        <p className="text-gray-500 text-sm mt-1">Manage professional verifications and platform metrics.</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200">
-        {TABS.map(({ key, label, icon: Icon, color }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              tab === key
-                ? 'border-primary-600 text-primary-700'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Icon size={15} className={tab === key ? color : ''} />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="text-center py-10 text-gray-400">Loading...</div>
-      ) : professionals.length === 0 ? (
-        <div className="card text-center py-10 text-gray-400">
-          <Users size={36} className="mx-auto mb-2 text-gray-300" />
-          No {tab} applications.
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {professionals.map(pro => (
-            <div key={pro.id} className="card">
-              {/* Header row */}
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xl flex-shrink-0">
-                    {pro.display_name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-gray-900">{pro.display_name}</div>
-                    <div className="text-sm text-gray-500">@{pro.user?.username} · {pro.user?.email || 'No email'}</div>
-                    <div className="flex flex-wrap gap-2 mt-1.5">
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono">{pro.kmpdc_license}</span>
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{pro.years_experience} yrs exp</span>
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded capitalize">{pro.gender}</span>
-                      <span className="text-xs bg-primary-50 text-primary-700 px-2 py-0.5 rounded font-medium">
-                        KES {Number(pro.rate_per_hour).toLocaleString()}/hr
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => setExpanded(expanded === pro.id ? null : pro.id)}
-                    className="text-gray-400 hover:text-gray-600 p-1"
-                  >
-                    {expanded === pro.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                  </button>
-                </div>
+      {/* Stats */}
+      {stats && (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          {[
+            { icon: Users, label: 'Patients', value: stats.total_users, color: 'text-primary-600' },
+            { icon: Star, label: 'Verified Pros', value: stats.total_professionals, color: 'text-green-600' },
+            { icon: BarChart2, label: 'Consultations', value: stats.total_consultations, color: 'text-blue-600' },
+            { icon: DollarSign, label: 'Revenue (KES)', value: `${(stats.total_revenue_kes / 1000).toFixed(1)}k`, color: 'text-accent-600' },
+            { icon: AlertCircle, label: 'Crisis Events', value: stats.crisis_events_total, color: 'text-red-500' },
+            { icon: AlertCircle, label: 'Unresolved Crisis', value: stats.crisis_events_unresolved, color: 'text-red-700' },
+          ].map(({ icon: Icon, label, value, color }) => (
+            <div key={label} className="card flex items-center gap-3 py-3">
+              <Icon size={20} className={color} />
+              <div>
+                <div className="text-lg font-bold text-gray-900">{value}</div>
+                <div className="text-xs text-gray-500">{label}</div>
               </div>
-
-              {/* Specializations + Languages */}
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {pro.specializations.map(s => (
-                  <span key={s.id} className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">{s.name}</span>
-                ))}
-                {pro.languages.map(l => (
-                  <span key={l.id} className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">{l.name}</span>
-                ))}
-              </div>
-
-              {/* Expanded bio */}
-              {expanded === pro.id && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm text-gray-700 leading-relaxed">
-                  <div className="font-medium text-gray-500 text-xs mb-1 uppercase tracking-wide">Bio</div>
-                  {pro.bio}
-                </div>
-              )}
-
-              {/* Action buttons — only for pending */}
-              {tab === 'pending' && (
-                <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100">
-                  <button
-                    onClick={() => handleAction(pro.id, 'approve')}
-                    disabled={acting === pro.id}
-                    className="flex-1 flex items-center justify-center gap-2 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                  >
-                    <CheckCircle size={16} />
-                    {acting === pro.id ? 'Processing...' : 'Approve & Verify'}
-                  </button>
-                  <button
-                    onClick={() => handleAction(pro.id, 'reject')}
-                    disabled={acting === pro.id}
-                    className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                  >
-                    <XCircle size={16} />
-                    Reject
-                  </button>
-                </div>
-              )}
-
-              {/* Status badge for non-pending */}
-              {tab !== 'pending' && (
-                <div className={`mt-3 flex items-center gap-1.5 text-sm font-medium ${
-                  tab === 'verified' ? 'text-green-600' : 'text-red-500'
-                }`}>
-                  {tab === 'verified' ? <CheckCircle size={15} /> : <XCircle size={15} />}
-                  {tab === 'verified' ? 'Approved & Live on Platform' : 'Application Rejected'}
-                </div>
-              )}
             </div>
           ))}
         </div>
       )}
+
+      {/* Main tab switcher */}
+      <div className="flex gap-3 border-b border-gray-200">
+        {(['professionals', 'sessions'] as MainTab[]).map(t => (
+          <button
+            key={t}
+            onClick={() => setMainTab(t)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px capitalize transition-colors ${
+              mainTab === t ? 'border-primary-600 text-primary-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {t === 'professionals' ? <Users size={14} /> : <Video size={14} />}
+            {t === 'professionals' ? 'Professional Applications' : 'All Sessions'}
+          </button>
+        ))}
+      </div>
+
+      {/* Sessions table */}
+      {mainTab === 'sessions' && (
+        <div>
+          {loading ? (
+            <div className="text-center py-10 text-gray-400">Loading…</div>
+          ) : consultations.length === 0 ? (
+            <div className="card text-center py-10 text-gray-400">No sessions yet.</div>
+          ) : (
+            <div className="space-y-3">
+              {consultations.map(c => {
+                const statusColor: Record<string, string> = {
+                  pending: 'text-yellow-700 bg-yellow-50',
+                  confirmed: 'text-blue-700 bg-blue-50',
+                  in_progress: 'text-green-700 bg-green-50',
+                  completed: 'text-gray-600 bg-gray-50',
+                  cancelled: 'text-red-700 bg-red-50',
+                }
+                return (
+                  <div key={c.id} className="card flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900">
+                        {c.user?.display_name} → {c.professional?.user?.display_name}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {format(new Date(c.scheduled_at), 'EEE MMM d, h:mm a')} · {c.duration_minutes} min · KES {Number(c.amount).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-400 font-mono">{c.consultation_id}</div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium capitalize ${statusColor[c.status] ?? 'bg-gray-50 text-gray-600'}`}>
+                        {c.status}
+                      </span>
+                      {c.status === 'pending' && (
+                        <button
+                          onClick={() => handleConfirmPayment(c.id)}
+                          disabled={confirmingId === c.id}
+                          className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 disabled:opacity-50"
+                        >
+                          <CheckCircle size={12} />
+                          {confirmingId === c.id ? '…' : 'Confirm'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tabs */}
+      {mainTab === 'professionals' && <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Professional Applications</h2>
+        <div className="flex gap-2 border-b border-gray-200 mb-4">
+          {(['pending', 'verified', 'rejected'] as TabType[]).map(key => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                tab === key
+                  ? 'border-primary-600 text-primary-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {key === 'pending' && <Clock size={14} className={tab === key ? 'text-amber-500' : ''} />}
+              {key === 'verified' && <CheckCircle size={14} className={tab === key ? 'text-green-600' : ''} />}
+              {key === 'rejected' && <XCircle size={14} className={tab === key ? 'text-red-500' : ''} />}
+              {TAB_LABEL[key]}
+              {key === 'pending' && professionals.length > 0 && tab === 'pending' && (
+                <span className="ml-1 bg-amber-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                  {professionals.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="text-center py-10 text-gray-400">Loading…</div>
+        ) : professionals.length === 0 ? (
+          <div className="card text-center py-10 text-gray-400">
+            <Users size={36} className="mx-auto mb-2 text-gray-300" />
+            No {TAB_LABEL[tab].toLowerCase()} applications.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {professionals.map(pro => (
+              <div key={pro.id} className="card">
+
+                {/* Header */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-11 h-11 rounded-xl bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-lg flex-shrink-0">
+                      {pro.user?.display_name?.charAt(0).toUpperCase() ?? '?'}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-gray-900">{pro.user?.display_name}</div>
+                      <div className="text-xs text-gray-500">
+                        @{pro.user?.username}
+                        {pro.user?.email && <> · {pro.user.email}</>}
+                        {pro.user?.phone && <> · {pro.user.phone}</>}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-mono">{pro.kmpdc_license}</span>
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{pro.years_experience} yrs</span>
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded capitalize">{pro.gender}</span>
+                        <span className="text-xs bg-primary-50 text-primary-700 px-2 py-0.5 rounded font-medium">KES {Number(pro.rate_per_hour).toLocaleString()}/hr</span>
+                        {pro.mpesa_number && (
+                          <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded">M-Pesa: {pro.mpesa_number}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setExpanded(expanded === pro.id ? null : pro.id)}
+                    className="text-gray-400 hover:text-gray-600 p-1 flex-shrink-0"
+                    title="View bio"
+                  >
+                    {expanded === pro.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                  </button>
+                </div>
+
+                {/* Specializations & Languages */}
+                {(pro.specializations?.length > 0 || pro.languages?.length > 0) && (
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    {pro.specializations?.map(s => (
+                      <span key={s.id} className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">{s.name}</span>
+                    ))}
+                    {pro.languages?.map(l => (
+                      <span key={l.id} className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">{l.name}</span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Expanded bio */}
+                {expanded === pro.id && (
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm text-gray-700 leading-relaxed">
+                    <div className="font-medium text-gray-400 text-xs mb-1.5 uppercase tracking-wide">Bio</div>
+                    {pro.bio}
+                  </div>
+                )}
+
+                {/* Applied date */}
+                <div className="mt-2 text-xs text-gray-400">
+                  Applied {new Date(pro.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </div>
+
+                {/* Action buttons — pending only */}
+                {tab === 'pending' && (
+                  <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100">
+                    <button
+                      onClick={() => handleAction(pro.id, 'approve')}
+                      disabled={acting === pro.id}
+                      className="flex-1 flex items-center justify-center gap-2 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                    >
+                      <CheckCircle size={15} />
+                      {acting === pro.id ? 'Processing…' : 'Approve & Verify'}
+                    </button>
+                    <button
+                      onClick={() => handleAction(pro.id, 'reject')}
+                      disabled={acting === pro.id}
+                      className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                    >
+                      <XCircle size={15} />
+                      Reject
+                    </button>
+                  </div>
+                )}
+
+                {/* Restore for rejected */}
+                {tab === 'rejected' && (
+                  <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100">
+                    <button
+                      onClick={() => handleAction(pro.id, 'approve')}
+                      disabled={acting === pro.id}
+                      className="flex items-center gap-2 py-2 px-4 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      <RotateCcw size={14} />
+                      Approve Instead
+                    </button>
+                    <span className="flex items-center gap-1.5 text-sm text-red-500 font-medium">
+                      <XCircle size={14} /> Rejected
+                    </span>
+                  </div>
+                )}
+
+                {tab === 'verified' && (
+                  <div className="mt-3 flex items-center gap-1.5 text-sm text-green-600 font-medium">
+                    <CheckCircle size={14} /> Live on Platform · {pro.total_sessions} sessions · Rating {pro.rating ? pro.rating.toFixed(1) : 'N/A'}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>}
     </div>
   )
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import api from '../../api/axios'
-import { ChevronLeft, ChevronRight, CheckCircle, AlertCircle } from 'lucide-react'
+import { useAuthStore } from '../../api/../store/authStore'
+import { ChevronLeft, ChevronRight, CheckCircle, AlertCircle, Sparkles, Star, Loader2 } from 'lucide-react'
 
 interface Question { key: string; text: string; scale?: string[] }
 interface AssessmentData {
@@ -11,17 +12,39 @@ interface AssessmentData {
   questions: Question[]
 }
 
+interface MatchedPro {
+  id: number
+  display_name: string
+  rate_per_hour: number
+  match_pct: number
+  match_reasons: string[]
+  specializations: { name: string }[]
+  languages: { name: string }[]
+  rating: number
+  years_experience: number
+  bio: string
+  kmpdc_license: string
+  gender: string
+  is_top_match: boolean
+}
+
 export default function TakeAssessment() {
   const { type } = useParams<{ type: string }>()
   const navigate = useNavigate()
+  const user = useAuthStore(s => s.user)
+  const isProfessional = user?.role === 'professional'
   const [data, setData] = useState<AssessmentData | null>(null)
   const [responses, setResponses] = useState<Record<string, number>>({})
   const [current, setCurrent] = useState(0)
   const [result, setResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [aiInsight, setAiInsight] = useState('')
+  const [aiInsightLoading, setAiInsightLoading] = useState(false)
+  const [matches, setMatches] = useState<MatchedPro[]>([])
+  const [matchExplanations, setMatchExplanations] = useState<Record<number, string>>({})
 
   useEffect(() => {
-    api.get(`/assessments/questions/${type}/`).then(r => setData(r.data))
+    api.get(`/assessments/questions/${type}`).then(r => setData(r.data))
   }, [type])
 
   if (!data) return <div className="flex justify-center py-20 text-gray-500">Loading assessment...</div>
@@ -41,8 +64,40 @@ export default function TakeAssessment() {
   const handleSubmit = async () => {
     setLoading(true)
     try {
-      const res = await api.post('/assessments/submit/', { assessment_type: type, responses })
-      setResult(res.data)
+      const res = await api.post('/assessments', { assessment_type: type, responses })
+      const a = res.data.assessment ?? res.data
+      const fullResult = { ...a, is_crisis_flag: res.data.crisis ?? a.is_crisis_flag }
+      setResult(fullResult)
+
+      // Fire AI insight + professional matching in parallel (non-blocking, graceful fallback)
+      setAiInsightLoading(true)
+      Promise.all([
+        api.post('/ai/assessment-insight', {
+          assessment_type: type,
+          score: fullResult.score,
+          severity: fullResult.severity,
+          interpretation: fullResult.interpretation,
+        })
+          .then(r => setAiInsight(r.data.insight || ''))
+          .catch(() => setAiInsight('')),  // falls back to result.recommendations below
+
+        !isProfessional
+          ? api.get(`/assessments/recommend?type=${type}`).then(async r => {
+              const topMatches: MatchedPro[] = r.data.matches ?? []
+              setMatches(topMatches)
+              topMatches.slice(0, 3).forEach(pro => {
+                api.post('/ai/match-explain', {
+                  professional_id: pro.id,
+                  assessment_type: type,
+                  match_pct: pro.match_pct,
+                  match_reasons: pro.match_reasons,
+                })
+                  .then(r => setMatchExplanations(prev => ({ ...prev, [pro.id]: r.data.explanation })))
+                  .catch(() => {})
+              })
+            }).catch(() => {})
+          : Promise.resolve(),
+      ]).finally(() => setAiInsightLoading(false))
     } finally {
       setLoading(false)
     }
@@ -84,14 +139,135 @@ export default function TakeAssessment() {
             </div>
           )}
 
+          {/* AI Insight */}
           <div className="bg-primary-50 rounded-xl p-4 mb-5">
-            <div className="font-medium text-primary-800 mb-2">Recommendations</div>
-            <p className="text-primary-700 text-sm">{result.recommendations}</p>
+            <div className="flex items-center gap-2 font-medium text-primary-800 mb-2">
+              <Sparkles size={15} />
+              {aiInsightLoading ? 'Generating personalised insight…' : 'Your Insight'}
+            </div>
+            {aiInsightLoading ? (
+              <div className="flex items-center gap-2 text-primary-600 text-sm">
+                <Loader2 size={14} className="animate-spin" /> Analysing your responses…
+              </div>
+            ) : (
+              <p className="text-primary-700 text-sm leading-relaxed">
+                {aiInsight || result.recommendations}
+              </p>
+            )}
           </div>
+
+          {/* Matched Professionals */}
+          {matches.length > 0 && (
+            <div className="mb-5">
+              <div className="flex items-center gap-2 font-semibold text-gray-900 mb-3">
+                <Sparkles size={15} className="text-primary-600" />
+                Professionals matched to your results
+              </div>
+              <div className="space-y-3">
+                {matches.slice(0, 3).map(pro => (
+                  <div key={pro.id} className={`border rounded-xl p-4 bg-white ${pro.is_top_match ? 'border-primary-400 ring-1 ring-primary-300' : 'border-gray-200'}`}>
+                    {/* Top badge */}
+                    {pro.is_top_match && (
+                      <div className="flex items-center gap-1 text-xs font-semibold text-primary-700 bg-primary-50 border border-primary-200 rounded-full px-2.5 py-0.5 w-fit mb-2">
+                        <Star size={10} className="fill-primary-500 text-primary-500" /> Best Match
+                      </div>
+                    )}
+
+                    {/* Header: avatar + name + match% */}
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-lg flex-shrink-0">
+                          {pro.display_name?.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-900">{pro.display_name}</div>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            {pro.rating ? (
+                              <div className="flex items-center gap-0.5 text-xs text-amber-600">
+                                <Star size={11} className="fill-amber-400 text-amber-400" />
+                                <span className="font-medium">{Number(pro.rating).toFixed(1)}</span>
+                              </div>
+                            ) : null}
+                            {pro.years_experience ? (
+                              <span className="text-xs text-gray-500">{pro.years_experience} yrs exp</span>
+                            ) : null}
+                            {pro.gender ? (
+                              <span className="text-xs text-gray-400 capitalize">{pro.gender}</span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0 ml-3">
+                        <div className={`text-sm font-bold px-2.5 py-0.5 rounded-full ${pro.match_pct >= 80 ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {pro.match_pct}% match
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 font-medium">KES {Number(pro.rate_per_hour).toLocaleString()}/hr</div>
+                      </div>
+                    </div>
+
+                    {/* License */}
+                    {pro.kmpdc_license && (
+                      <div className="text-xs text-gray-500 mb-2">
+                        License: <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded">{pro.kmpdc_license}</span>
+                      </div>
+                    )}
+
+                    {/* Bio */}
+                    {pro.bio && (
+                      <p className="text-xs text-gray-600 leading-relaxed mb-2 line-clamp-2">{pro.bio}</p>
+                    )}
+
+                    {/* Specializations */}
+                    {pro.specializations?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {pro.specializations.map(s => (
+                          <span key={s.name} className="bg-blue-50 text-blue-700 border border-blue-100 text-xs px-2 py-0.5 rounded-full">{s.name}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Languages */}
+                    {pro.languages?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {pro.languages.map(l => (
+                          <span key={l.name} className="bg-green-50 text-green-700 border border-green-100 text-xs px-2 py-0.5 rounded-full">{l.name}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* AI match explanation */}
+                    {matchExplanations[pro.id] ? (
+                      <p className="text-xs text-gray-600 italic mt-1 mb-3 leading-relaxed border-t border-gray-100 pt-2">
+                        <Sparkles size={10} className="inline text-primary-400 mr-1" />
+                        {matchExplanations[pro.id]}
+                      </p>
+                    ) : (
+                      <div className="flex items-center gap-1 text-xs text-gray-400 mb-3 border-t border-gray-100 pt-2">
+                        <Loader2 size={10} className="animate-spin" /> Generating match explanation…
+                      </div>
+                    )}
+
+                    {/* Match reason tags */}
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {pro.match_reasons.map(r => (
+                        <span key={r} className="bg-primary-50 text-primary-700 text-xs px-2 py-0.5 rounded-full">{r}</span>
+                      ))}
+                    </div>
+
+                    {!isProfessional && (
+                      <Link to={`/book/${pro.id}`} className="btn-primary text-xs py-1.5 w-full text-center block">
+                        Book Session
+                      </Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3">
             <button onClick={() => navigate('/professionals')} className="btn-primary flex-1">
-              Find a Therapist
+              All Professionals
             </button>
             <button onClick={() => navigate('/assessments')} className="btn-secondary flex-1">
               Back to Assessments

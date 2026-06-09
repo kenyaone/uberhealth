@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../api/axios'
+import { useAuthStore } from '../../store/authStore'
 import type { Consultation } from '../../types'
 import { format } from 'date-fns'
-import { Video, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { Video, Clock, CheckCircle, XCircle, AlertCircle, FileText, Calendar, PlayCircle } from 'lucide-react'
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   pending: { label: 'Awaiting Payment', color: 'text-yellow-700 bg-yellow-50', icon: Clock },
@@ -14,21 +15,33 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
 }
 
 export default function MyConsultations() {
+  const user = useAuthStore(s => s.user)
+  const isProfessional = user?.role === 'professional'
   const [consultations, setConsultations] = useState<Consultation[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    api.get('/consultations/mine/').then(r => setConsultations(r.data)).finally(() => setLoading(false))
-  }, [])
+    const endpoint = isProfessional ? '/consultations/professional/list' : '/consultations'
+    api.get(endpoint)
+      .then(r => {
+        const data = r.data.data ?? r.data.results ?? r.data
+        setConsultations(Array.isArray(data) ? data : [])
+      })
+      .catch(() => setError('Could not load sessions.'))
+      .finally(() => setLoading(false))
+  }, [isProfessional])
 
   if (loading) return <div className="text-center py-10 text-gray-400">Loading sessions...</div>
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">My Sessions</h1>
-        <Link to="/professionals" className="btn-primary text-sm">Book New Session</Link>
+        <h1 className="text-2xl font-bold text-gray-900">{isProfessional ? 'My Patient Sessions' : 'My Sessions'}</h1>
+        {!isProfessional && <Link to="/professionals" className="btn-primary text-sm">Book New Session</Link>}
       </div>
+
+      {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{error}</div>}
 
       {consultations.length === 0 ? (
         <div className="card text-center py-10">
@@ -43,13 +56,16 @@ export default function MyConsultations() {
             const statusConf = STATUS_CONFIG[c.status] || STATUS_CONFIG['pending']
             const StatusIcon = statusConf.icon
             const canJoin = ['confirmed', 'in_progress'].includes(c.status)
+            const statusLabel = (isProfessional && c.status === 'in_progress') ? 'Live' : statusConf.label
 
             return (
               <div key={c.id} className="card">
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="font-semibold text-gray-900">
-                      {c.professional_detail?.display_name || 'Therapist'}
+                      {isProfessional
+                        ? (c.user_display_name || 'Patient')
+                        : (c.professional_detail?.display_name || 'Therapist')}
                     </div>
                     <div className="text-sm text-gray-500 mt-0.5">
                       {format(new Date(c.scheduled_at), 'EEE, MMM d · h:mm a')}
@@ -59,9 +75,9 @@ export default function MyConsultations() {
                       KES {Number(c.amount).toLocaleString()} · {c.consultation_id}
                     </div>
                   </div>
-                  <span className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${statusConf.color}`}>
+                  <span className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${isProfessional && c.status === 'in_progress' ? 'text-green-700 bg-green-100 ring-1 ring-green-400' : statusConf.color}`}>
                     <StatusIcon size={12} />
-                    {statusConf.label}
+                    {statusLabel}
                   </span>
                 </div>
 
@@ -71,21 +87,44 @@ export default function MyConsultations() {
                   </div>
                 )}
 
-                <div className="flex gap-2 mt-4">
+                <div className="flex flex-wrap gap-2 mt-4">
                   {canJoin && (
-                    <Link to={`/session/${c.consultation_id}`} className="btn-primary flex-1 text-center text-sm py-2">
-                      <Video size={14} className="inline mr-1" /> Join Session
+                    <Link
+                      to={`/session/${c.consultation_id}`}
+                      className={`flex-1 text-center text-sm py-2 rounded-lg font-medium flex items-center justify-center gap-1.5 transition-colors ${
+                        isProfessional
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                          : 'btn-primary'
+                      }`}
+                    >
+                      {isProfessional ? (
+                        <><PlayCircle size={14} /> Start Session</>
+                      ) : (
+                        <><Video size={14} /> Join Session</>
+                      )}
                     </Link>
                   )}
                   {c.status === 'completed' && !c.user_rating && (
-                    <RateButton consultationId={c.consultation_id} onRated={() => {
-                      setConsultations(prev => prev.map(x => x.consultation_id === c.consultation_id ? { ...x, user_rating: 5 } : x))
+                    <RateButton consultationId={c.id} onRated={() => {
+                      setConsultations(prev => prev.map(x => x.id === c.id ? { ...x, user_rating: 5 } : x))
                     }} />
                   )}
                   {c.status === 'completed' && c.user_rating && (
-                    <span className="text-sm text-amber-500">
+                    <span className="text-sm text-amber-500 self-center">
                       {'⭐'.repeat(c.user_rating)} Rated
                     </span>
+                  )}
+                  {c.status === 'completed' && !isProfessional && (
+                    <>
+                      <RequestNotesButton consultationId={c.id} alreadyRequested={!!c.notes_requested_at} />
+                      <Link
+                        to={`/book/${c.professional_id ?? (typeof c.professional === 'object' ? (c.professional as any).id : c.professional)}`}
+                        state={{ is_follow_up: true, parent_id: c.id }}
+                        className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1"
+                      >
+                        <Calendar size={13} /> Follow-up
+                      </Link>
+                    </>
                   )}
                 </div>
               </div>
@@ -97,12 +136,33 @@ export default function MyConsultations() {
   )
 }
 
-function RateButton({ consultationId, onRated }: { consultationId: string; onRated: () => void }) {
+function RequestNotesButton({ consultationId, alreadyRequested }: { consultationId: number; alreadyRequested: boolean }) {
+  const [requested, setRequested] = useState(alreadyRequested)
+
+  const handleRequest = async () => {
+    try {
+      await api.post(`/consultations/${consultationId}/notes-request`)
+      setRequested(true)
+    } catch {}
+  }
+
+  return requested ? (
+    <span className="text-xs text-gray-500 self-center flex items-center gap-1">
+      <FileText size={12} /> Notes requested
+    </span>
+  ) : (
+    <button onClick={handleRequest} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+      <FileText size={13} /> Request Notes
+    </button>
+  )
+}
+
+function RateButton({ consultationId, onRated }: { consultationId: number; onRated: () => void }) {
   const [rating, setRating] = useState(0)
   const [showing, setShowing] = useState(false)
 
   const submit = async () => {
-    await api.post(`/consultations/${consultationId}/rate/`, { rating })
+    await api.post(`/consultations/${consultationId}/rate`, { rating })
     onRated()
     setShowing(false)
   }

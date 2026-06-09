@@ -68,8 +68,9 @@ export interface Consultation {
   id: number
   consultation_id: string
   user_display_name: string
-  professional: number
-  professional_detail: Professional
+  professional_id?: number
+  professional: number | Professional
+  professional_detail?: Professional
   scheduled_at: string
   duration_minutes: number
   status: string
@@ -79,7 +80,13 @@ export interface Consultation {
   share_assessments: boolean
   share_mood_logs: boolean
   recording_enabled: boolean
-  professional_notes: string
+  recording_url?: string
+  recording_kept?: boolean
+  recording_deleted?: boolean
+  notes_requested_at?: string
+  is_follow_up?: boolean
+  parent_consultation_id?: number
+  professional_notes?: string
   user_rating?: number
   user_review?: string
   actual_start?: string

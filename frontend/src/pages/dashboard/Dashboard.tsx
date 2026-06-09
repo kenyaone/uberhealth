@@ -2,25 +2,38 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import api from '../../api/axios'
-import { ClipboardList, Users, Calendar, TrendingUp, Heart, AlertCircle } from 'lucide-react'
+import { ClipboardList, Users, Calendar, TrendingUp, Heart, AlertCircle, Sparkles, Loader2 } from 'lucide-react'
 import type { Assessment, MoodLog, SobrietyTracker } from '../../types'
+import ProfessionalDashboard from './ProfessionalDashboard'
 
 export default function Dashboard() {
   const user = useAuthStore((s) => s.user)
+
+  if (user?.role === 'professional') return <ProfessionalDashboard />
   const [assessments, setAssessments] = useState<Assessment[]>([])
   const [moodLogs, setMoodLogs] = useState<MoodLog[]>([])
   const [sobriety, setSobriety] = useState<SobrietyTracker[]>([])
   const [loading, setLoading] = useState(true)
+  const [progressInsight, setProgressInsight] = useState('')
+  const [insightLoading, setInsightLoading] = useState(false)
 
   useEffect(() => {
     Promise.all([
-      api.get('/assessments/history/?page_size=3'),
+      api.get('/assessments?page_size=3'),
       api.get('/phr/mood/?days=7'),
-      api.get('/phr/sobriety/'),
+      api.get('/phr/sobriety'),
     ]).then(([a, m, s]) => {
-      setAssessments(a.data.results || a.data)
+      const loaded = a.data.data ?? a.data.results ?? a.data
+      setAssessments(Array.isArray(loaded) ? loaded : [])
       setMoodLogs(m.data.results || m.data)
       setSobriety(s.data.results || s.data)
+      if (loaded.length > 0) {
+        setInsightLoading(true)
+        api.get('/ai/progress-insight')
+          .then(r => setProgressInsight(r.data.insight || ''))
+          .catch(() => {})
+          .finally(() => setInsightLoading(false))
+      }
     }).catch(() => {}).finally(() => setLoading(false))
   }, [])
 
@@ -106,6 +119,23 @@ export default function Dashboard() {
           </Link>
         </div>
       </div>
+
+      {/* AI Progress Insight */}
+      {(insightLoading || progressInsight) && (
+        <div className="bg-gradient-to-r from-primary-50 to-blue-50 border border-primary-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 font-medium text-primary-800 mb-2">
+            <Sparkles size={15} />
+            Your Progress Insight
+          </div>
+          {insightLoading ? (
+            <div className="flex items-center gap-2 text-primary-600 text-sm">
+              <Loader2 size={14} className="animate-spin" /> Analysing your wellness data…
+            </div>
+          ) : (
+            <p className="text-primary-700 text-sm leading-relaxed">{progressInsight}</p>
+          )}
+        </div>
+      )}
 
       {/* Recent assessments */}
       {assessments.length > 0 && (
