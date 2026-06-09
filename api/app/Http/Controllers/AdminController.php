@@ -89,4 +89,39 @@ class AdminController extends Controller
             'professional' => $professional->load('user:id,display_name,email'),
         ]);
     }
+
+    public function workload()
+    {
+        $weekStart = now()->startOfWeek();
+        $weekEnd   = now()->endOfWeek();
+
+        $professionals = \App\Models\Professional::with('user:id,display_name')
+            ->where('verification_status', 'verified')
+            ->get()
+            ->map(function ($pro) use ($weekStart, $weekEnd) {
+                $bookings = \App\Models\Consultation::where('professional_id', $pro->id)
+                    ->whereBetween('scheduled_at', [$weekStart, $weekEnd])
+                    ->whereIn('status', ['confirmed', 'in_progress'])
+                    ->count();
+                $cap = $pro->max_clients_per_week ?: 20;
+                return [
+                    'id'                    => $pro->id,
+                    'display_name'          => $pro->user->display_name ?? 'Unknown',
+                    'bookings_this_week'    => $bookings,
+                    'max_clients_per_week'  => $cap,
+                    'load_pct'              => (int) min(100, round($bookings / $cap * 100)),
+                    'is_overloaded'         => $bookings >= $cap,
+                ];
+            })->sortByDesc('load_pct')->values();
+
+        return response()->json(['workload' => $professionals]);
+    }
+
+    public function confirmConsultation(int $id)
+    {
+        $consultation = \App\Models\Consultation::find($id);
+        if (!$consultation) return response()->json(['error' => 'Not found'], 404);
+        $consultation->update(['status' => 'confirmed']);
+        return response()->json(['message' => 'Confirmed.', 'consultation' => $consultation]);
+    }
 }

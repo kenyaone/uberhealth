@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
+import { I18nProvider } from './contexts/I18nContext'
 import Layout from './components/Layout/Layout'
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
@@ -23,6 +24,11 @@ import Subscribe from './pages/subscribe/Subscribe'
 import Corporate from './pages/corporate/Corporate'
 import Lessons from './pages/lessons/Lessons'
 import LessonDetail from './pages/lessons/LessonDetail'
+import SessionHistory from './pages/history/SessionHistory'
+import SupportGroups from './pages/groups/SupportGroups'
+import GroupChat from './pages/groups/GroupChat'
+import FollowUpSurvey from './pages/surveys/FollowUpSurvey'
+import AvailabilityManager from './pages/professional/AvailabilityManager'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -36,6 +42,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
+    <I18nProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
@@ -62,8 +69,14 @@ export default function App() {
           <Route path="/corporate" element={<Corporate />} />
           <Route path="/lessons" element={<Lessons />} />
           <Route path="/lessons/:slug" element={<LessonDetail />} />
+          <Route path="/history" element={<SessionHistory />} />
+          <Route path="/groups" element={<SupportGroups />} />
+          <Route path="/groups/:id" element={<GroupChat />} />
+          <Route path="/surveys" element={<FollowUpSurvey />} />
+          <Route path="/availability" element={<AvailabilityManager />} />
         </Route>
       </Routes>
     </BrowserRouter>
+    </I18nProvider>
   )
 }

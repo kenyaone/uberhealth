@@ -11,7 +11,7 @@ export default function ProfessionalDetail() {
   const [pro, setPro] = useState<Professional | null>(null)
 
   useEffect(() => {
-    api.get(`/professionals/${id}/`).then(r => setPro(r.data))
+    api.get(`/professionals/${id}`).then(r => setPro(r.data.professional ?? r.data))
   }, [id])
 
   if (!pro) return <div className="text-center py-10 text-gray-400">Loading...</div>

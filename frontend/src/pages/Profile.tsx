@@ -25,7 +25,7 @@ export default function Profile() {
   const onSubmit = async (data: ProfileForm) => {
     setSaving(true)
     try {
-      const res = await api.patch('/auth/profile/', data)
+      const res = await api.patch('/auth/profile', data)
       updateUser(res.data)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)

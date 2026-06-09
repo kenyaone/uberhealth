@@ -22,7 +22,7 @@ export default function Login() {
     setLoading(true)
     setError('')
     try {
-      const res = await api.post('/auth/login/', data)
+      const res = await api.post('/auth/login', data)
       setAuth(res.data.user, res.data.access, res.data.refresh)
       navigate('/dashboard')
     } catch (err: any) {

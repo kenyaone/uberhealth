@@ -34,7 +34,7 @@ export default function Assessments() {
   const [history, setHistory] = useState<Assessment[]>([])
 
   useEffect(() => {
-    api.get('/assessments/history/').then(r => setHistory(r.data.results || r.data))
+    api.get('/assessments').then(r => setHistory(r.data.data ?? r.data.results ?? r.data))
   }, [])
 
   const lastByType: Record<string, Assessment> = {}

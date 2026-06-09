@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
@@ -15,21 +15,23 @@ interface SignupForm {
 }
 
 export default function Signup() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const presetRole = (location.state as any)?.role
+  const { setAuth } = useAuthStore()
   const { register, handleSubmit, watch, formState: { errors } } = useForm<SignupForm>({
-    defaultValues: { role: 'user' }
+    defaultValues: { role: presetRole === 'professional' ? 'professional' : 'user' }
   })
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { setAuth } = useAuthStore()
-  const navigate = useNavigate()
   const password = watch('password')
 
   const onSubmit = async (data: SignupForm) => {
     setLoading(true)
     setError('')
     try {
-      const res = await api.post('/auth/signup/', data)
+      const res = await api.post('/auth/signup', data)
       setAuth(res.data.user, res.data.access, res.data.refresh)
       navigate(res.data.user.role === 'professional' ? '/apply' : '/dashboard')
     } catch (err: any) {

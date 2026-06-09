@@ -20,13 +20,13 @@ export default function SobrietyTracker() {
   const { register, handleSubmit, reset } = useForm<{ substance: string; start_date: string }>()
 
   useEffect(() => {
-    api.get('/phr/sobriety/').then(r => setTrackers(r.data.results || r.data))
+    api.get('/phr/sobriety').then(r => setTrackers(r.data.results || r.data))
   }, [])
 
   const onSubmit = async (data: any) => {
     setSaving(true)
     try {
-      const res = await api.post('/phr/sobriety/', data)
+      const res = await api.post('/phr/sobriety', data)
       setTrackers(prev => [...prev, res.data])
       setShowForm(false)
       reset()

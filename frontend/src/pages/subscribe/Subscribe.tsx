@@ -24,7 +24,7 @@ export default function Subscribe() {
     setLoading(true)
     setError('')
     try {
-      await api.post('/subscriptions/subscribe/', { plan_id: plan.id, phone })
+      await api.post('/subscriptions/subscribe', { plan_id: plan.id, phone })
       setSuccess(true)
     } catch (err: any) {
       setError(err.response?.data?.error || 'Payment failed. Try again.')

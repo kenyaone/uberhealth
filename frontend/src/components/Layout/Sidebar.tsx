@@ -2,45 +2,50 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, ClipboardList, Users, Calendar,
   Heart, TrendingUp, User, Leaf, ShieldCheck, Stethoscope,
-  DollarSign, Tag, BookOpen
+  DollarSign, Tag, BookOpen, MessageCircle, History, Clock
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
+import { useT } from '../../contexts/I18nContext'
 
 export default function Sidebar() {
   const user = useAuthStore(s => s.user)
+  const { t } = useT()
   const isAdmin = user?.role === 'admin'
   const isProfessional = user?.role === 'professional'
 
   const userLinks = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/assessments', icon: ClipboardList, label: 'Assessments' },
-    { to: '/professionals', icon: Users, label: 'Find Therapist' },
-    { to: '/consultations', icon: Calendar, label: 'My Sessions' },
-    { to: '/mood', icon: Heart, label: 'Mood Tracker' },
-    { to: '/sobriety', icon: TrendingUp, label: 'Sobriety' },
-    { to: '/lessons', icon: BookOpen, label: 'Recovery Library' },
-    { to: '/profile', icon: User, label: 'Profile' },
+    { to: '/dashboard', icon: LayoutDashboard, label: t('dashboard') },
+    { to: '/assessments', icon: ClipboardList, label: t('assessments') },
+    { to: '/professionals', icon: Users, label: t('findTherapist') },
+    { to: '/consultations', icon: Calendar, label: t('mySessions') },
+    { to: '/history', icon: History, label: t('sessionHistory') },
+    { to: '/mood', icon: Heart, label: t('moodTracker') },
+    { to: '/sobriety', icon: TrendingUp, label: t('sobriety') },
+    { to: '/lessons', icon: BookOpen, label: t('recoveryLibrary') },
+    { to: '/groups', icon: MessageCircle, label: t('supportGroups') },
+    { to: '/profile', icon: User, label: t('profile') },
   ]
 
   const professionalLinks = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/consultations', icon: Calendar, label: 'My Sessions' },
-    { to: '/profile', icon: User, label: 'Profile' },
-    { to: '/apply', icon: Stethoscope, label: 'My Application' },
+    { to: '/dashboard', icon: LayoutDashboard, label: t('dashboard') },
+    { to: '/consultations', icon: Calendar, label: t('mySessions') },
+    { to: '/availability', icon: Clock, label: t('availability') },
+    { to: '/profile', icon: User, label: t('profile') },
+    { to: '/apply', icon: Stethoscope, label: t('myApplication') },
   ]
 
   const adminLinks = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/dashboard', icon: LayoutDashboard, label: t('dashboard') },
     { to: '/admin', icon: ShieldCheck, label: 'Verify Professionals' },
     { to: '/admin/revenue', icon: DollarSign, label: 'Revenue' },
     { to: '/professionals', icon: Users, label: 'All Professionals' },
-    { to: '/profile', icon: User, label: 'Profile' },
+    { to: '/profile', icon: User, label: t('profile') },
   ]
 
   // Add Pricing link for regular users
   const userLinksWithPricing = [
     ...userLinks.slice(0, -1),
-    { to: '/pricing', icon: Tag, label: 'Upgrade Plan' },
+    { to: '/pricing', icon: Tag, label: t('upgradePlan') },
     userLinks[userLinks.length - 1],
   ]
 

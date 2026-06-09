@@ -2,21 +2,25 @@ import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Navbar from './Navbar'
 import AiChat from '../AiChat'
+import OfflineBanner from '../OfflineBanner'
 import { usePresenceHeartbeat } from '../../hooks/usePresence'
 
 export default function Layout() {
   usePresenceHeartbeat()
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Navbar />
-        <main className="flex-1 overflow-y-auto p-6">
-          <Outlet />
-        </main>
+    <>
+      <OfflineBanner />
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Navbar />
+          <main className="flex-1 overflow-y-auto p-6">
+            <Outlet />
+          </main>
+        </div>
+        <AiChat />
       </div>
-      <AiChat />
-    </div>
+    </>
   )
 }

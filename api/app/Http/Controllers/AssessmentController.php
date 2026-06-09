@@ -165,6 +165,7 @@ class AssessmentController extends Controller
         // Online sessions: +5 if is_available_online
         // Language match:  +10 if patient language preference matches pro's languages
         // Gender match:    +5 if patient gender preference matches pro's gender
+        // Workload:        –15 if pro is at 100% capacity; –8 if >80%; 0 otherwise
         // KMPDC:           hard gate already (verified only) — always shown as reason
         // Accepting pats:  hard gate already — always shown as reason
         //
@@ -172,13 +173,22 @@ class AssessmentController extends Controller
         // Normalise against 120 so an excellent match (primary spec+great rating+exp+online+lang) ≈ 95%
         $NORM = $isSevere ? 125.0 : 115.0;
 
+        // Pre-compute weekly bookings for all professionals (one query)
+        $weekStart = now()->startOfWeek();
+        $weekEnd   = now()->endOfWeek();
+        $weeklyBookings = \App\Models\Consultation::selectRaw('professional_id, COUNT(*) as cnt')
+            ->whereBetween('scheduled_at', [$weekStart, $weekEnd])
+            ->whereIn('status', ['confirmed', 'in_progress'])
+            ->groupBy('professional_id')
+            ->pluck('cnt', 'professional_id');
+
         $professionals = \App\Models\Professional::with(['user:id,display_name,avatar', 'specializations', 'languages'])
             ->where('verification_status', 'verified')
             ->where('is_accepting_new_patients', true)
             ->get();
 
         $scored = $professionals->map(function ($pro) use (
-            $targetSpecs, $language, $genderPref, $isSevere, $isModerate, $NORM
+            $targetSpecs, $language, $genderPref, $isSevere, $isModerate, $NORM, $weeklyBookings
         ) {
             $proSpecs = $pro->specializations->pluck('name')->toArray();
             $proLangs = $pro->languages->pluck('name')->toArray();
@@ -221,7 +231,15 @@ class AssessmentController extends Controller
             $genderMatch = $genderPref && ($pro->gender === $genderPref);
             $genderScore = $genderMatch ? 5 : 0;
 
-            $total    = $specScore + $ratingScore + $expScore + $onlineScore + $langScore + $genderScore;
+            // 7. Workload — penalise over-capacity professionals
+            $cap          = max(1, $pro->max_clients_per_week ?? 20);
+            $booked       = (int) ($weeklyBookings[$pro->id] ?? 0);
+            $loadFraction = $booked / $cap;
+            if ($loadFraction >= 1.0)      $workloadPenalty = 15;
+            elseif ($loadFraction >= 0.8)  $workloadPenalty = 8;
+            else                           $workloadPenalty = 0;
+
+            $total    = $specScore + $ratingScore + $expScore + $onlineScore + $langScore + $genderScore - $workloadPenalty;
             $matchPct = (int) min(100, round($total / $NORM * 100));
 
             // ── Match reasons (clear, patient-facing) ──────────────────────────
@@ -240,12 +258,14 @@ class AssessmentController extends Controller
 
             // ── Score breakdown (transparent to frontend) ─────────────────────
             $breakdown = [
-                'specialization' => round($specScore),
-                'rating'         => round($ratingScore, 1),
-                'experience'     => round($expScore, 1),
-                'online'         => $onlineScore,
-                'language'       => $langScore,
-                'gender'         => $genderScore,
+                'specialization'  => round($specScore),
+                'rating'          => round($ratingScore, 1),
+                'experience'      => round($expScore, 1),
+                'online'          => $onlineScore,
+                'language'        => $langScore,
+                'gender'          => $genderScore,
+                'workload_penalty'=> -$workloadPenalty,
+                'load_pct'        => (int) round($loadFraction * 100),
             ];
 
             return [

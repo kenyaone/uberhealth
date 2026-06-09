@@ -2,12 +2,16 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import api from '../../api/axios'
-import { ClipboardList, Users, Calendar, TrendingUp, Heart, AlertCircle, Sparkles, Loader2 } from 'lucide-react'
+import { ClipboardList, Users, Calendar, TrendingUp, Heart, AlertCircle, Sparkles, Loader2, UserCheck, Bell } from 'lucide-react'
 import type { Assessment, MoodLog, SobrietyTracker } from '../../types'
 import ProfessionalDashboard from './ProfessionalDashboard'
+import { useT } from '../../contexts/I18nContext'
+
+interface Therapist { id: number; display_name: string; avatar?: string; sessions_together: number; last_session_at: string }
 
 export default function Dashboard() {
   const user = useAuthStore((s) => s.user)
+  const { t } = useT()
 
   if (user?.role === 'professional') return <ProfessionalDashboard />
   const [assessments, setAssessments] = useState<Assessment[]>([])
@@ -16,6 +20,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [progressInsight, setProgressInsight] = useState('')
   const [insightLoading, setInsightLoading] = useState(false)
+  const [myTherapist, setMyTherapist] = useState<Therapist | null>(null)
+  const [pendingSurvey, setPendingSurvey] = useState(false)
+
+  useEffect(() => {
+    // Continuity + pending survey (non-blocking)
+    api.get('/consultations/my-therapist').then(r => setMyTherapist(r.data.therapist)).catch(() => {})
+    api.get('/surveys/pending').then(r => setPendingSurvey(!!r.data.survey)).catch(() => {})
+  }, [])
 
   useEffect(() => {
     Promise.all([
@@ -44,12 +56,50 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Pending survey nudge */}
+      {pendingSurvey && (
+        <Link to="/surveys" className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 hover:bg-amber-100 transition-colors">
+          <Bell size={18} className="text-amber-600 flex-shrink-0" />
+          <div className="flex-1 text-sm text-amber-800">
+            <span className="font-semibold">{t('pendingSurvey')}</span>
+            <span className="text-amber-600 ml-2 text-xs">{t('takeSurvey')} →</span>
+          </div>
+        </Link>
+      )}
+
       {/* Greeting */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          Hello, {user?.display_name} 👋
-        </h1>
-        <p className="text-gray-500 mt-1">How are you doing today?</p>
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {t('welcomeBack')}, {user?.display_name} 👋
+          </h1>
+          <p className="text-gray-500 mt-1">{t('howAreYou')}</p>
+        </div>
+
+        {/* My Therapist — continuity card */}
+        {myTherapist ? (
+          <div className="flex items-center gap-3 bg-primary-50 border border-primary-200 rounded-xl px-4 py-3 min-w-[200px]">
+            <div className="w-10 h-10 bg-primary-200 rounded-full flex items-center justify-center text-primary-800 font-bold text-sm flex-shrink-0">
+              {myTherapist.display_name.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-gray-500 font-medium">{t('myTherapist')}</div>
+              <div className="font-semibold text-gray-900 text-sm truncate">{myTherapist.display_name}</div>
+              <div className="text-xs text-gray-400">{myTherapist.sessions_together} {t('sessionsTogether')}</div>
+            </div>
+            <Link to={`/book/${myTherapist.id}`} className="btn-primary text-xs py-1.5 px-3 flex-shrink-0">
+              {t('bookAgain')}
+            </Link>
+          </div>
+        ) : (
+          <Link to="/professionals" className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 hover:bg-gray-100 transition-colors">
+            <UserCheck size={20} className="text-gray-400" />
+            <div>
+              <div className="text-sm font-medium text-gray-700">{t('noTherapistYet')}</div>
+              <div className="text-xs text-primary-600">{t('findFirst')} →</div>
+            </div>
+          </Link>
+        )}
       </div>
 
       {/* Quick stats */}

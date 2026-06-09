@@ -422,6 +422,37 @@ class ConsultationController extends Controller
         return response()->json(['message' => 'Notes saved', 'consultation' => $consultation]);
     }
 
+    // Continuity: patient's most recently-used therapist + booking count
+    public function myTherapist()
+    {
+        $user = auth('api')->user();
+        $last = Consultation::with('professional.user:id,display_name,avatar')
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['confirmed', 'in_progress', 'completed'])
+            ->orderByDesc('scheduled_at')
+            ->first();
+
+        if (!$last || !$last->professional) {
+            return response()->json(['therapist' => null]);
+        }
+
+        $count = Consultation::where('user_id', $user->id)
+            ->where('professional_id', $last->professional_id)
+            ->whereIn('status', ['confirmed', 'in_progress', 'completed'])
+            ->count();
+
+        $pro = $last->professional;
+        return response()->json([
+            'therapist' => [
+                'id'               => $pro->id,
+                'display_name'     => $pro->user->display_name ?? 'Therapist',
+                'avatar'           => $pro->user->avatar ?? null,
+                'sessions_together' => $count,
+                'last_session_at'  => $last->scheduled_at,
+            ],
+        ]);
+    }
+
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private function getOwnConsultation(int $id, int $userId): ?Consultation

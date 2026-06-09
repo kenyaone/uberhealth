@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AiController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\AvailabilityController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\CorporateController;
 use App\Http\Controllers\CrisisController;
@@ -13,7 +14,11 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PHRController;
 use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\ProfessionalController;
+use App\Http\Controllers\ReferralController;
+use App\Http\Controllers\SessionFeedbackController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\SupportGroupController;
+use App\Http\Controllers\SurveyController;
 use Illuminate\Support\Facades\Route;
 
 // -------------------------------------------------------
@@ -41,6 +46,9 @@ Route::get('/assessments/questions/{type}', [AssessmentController::class, 'quest
 
 // Online professionals — public so the Find Therapist page can show green dots without auth
 Route::get('/presence/professionals', [PresenceController::class, 'onlineProfessionals']);
+
+// Availability bookable slots — public (patients check before booking)
+Route::get('/professionals/{id}/slots', [AvailabilityController::class, 'bookableSlots']);
 
 // Professional routes — specific routes must appear before {id} wildcard
 Route::get('/professionals', [ProfessionalController::class, 'index']);
@@ -136,6 +144,33 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/read', [NotificationController::class, 'markRead']);
 
+    // Session feedback
+    Route::post('/consultations/{consultationId}/feedback', [SessionFeedbackController::class, 'store']);
+    Route::get('/feedback/mine', [SessionFeedbackController::class, 'myFeedback']);
+
+    // Follow-up surveys
+    Route::get('/surveys/pending', [SurveyController::class, 'pending']);
+    Route::post('/surveys/{id}/respond', [SurveyController::class, 'store']);
+
+    // Referrals
+    Route::post('/referrals', [ReferralController::class, 'store']);
+    Route::get('/referrals', [ReferralController::class, 'index']);
+    Route::get('/referrals/mine', [ReferralController::class, 'myReferrals']);
+
+    // Support groups
+    Route::get('/groups', [SupportGroupController::class, 'index']);
+    Route::post('/groups/{id}/join', [SupportGroupController::class, 'join']);
+    Route::delete('/groups/{id}/leave', [SupportGroupController::class, 'leave']);
+    Route::get('/groups/{id}/messages', [SupportGroupController::class, 'messages']);
+    Route::post('/groups/{id}/messages', [SupportGroupController::class, 'postMessage']);
+
+    // Availability (professional only)
+    Route::get('/availability/mine', [AvailabilityController::class, 'mine']);
+    Route::put('/availability', [AvailabilityController::class, 'update']);
+
+    // Continuity — patient's most recent completed professional
+    Route::get('/consultations/my-therapist', [ConsultationController::class, 'myTherapist']);
+
     // Admin routes (role check via middleware)
     Route::middleware('can:admin')->prefix('admin')->group(function () {
         Route::get('/stats', [AdminController::class, 'stats']);
@@ -143,5 +178,7 @@ Route::middleware('auth:api')->group(function () {
         Route::put('/professionals/{id}/verify', [AdminController::class, 'verifyProfessional']);
         Route::get('/consultations', [AdminController::class, 'consultations']);
         Route::put('/consultations/{id}/confirm', [AdminController::class, 'confirmConsultation']);
+        Route::get('/workload', [AdminController::class, 'workload']);
+        Route::put('/groups/{id}/moderate/{msgId}', [SupportGroupController::class, 'moderate']);
     });
 });

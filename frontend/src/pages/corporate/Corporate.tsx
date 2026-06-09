@@ -19,7 +19,7 @@ export default function Corporate() {
   const employeeCount = watch('employee_count')
 
   useEffect(() => {
-    api.get('/corporate/tiers/').then(r => { setTiers(r.data); setSelectedTier(r.data[0]) })
+    api.get('/corporate/tiers').then(r => { setTiers(r.data); setSelectedTier(r.data[0]) })
   }, [])
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function Corporate() {
     setLoading(true)
     setError('')
     try {
-      await api.post('/corporate/apply/', { ...data, tier_id: selectedTier.id })
+      await api.post('/corporate/apply', { ...data, tier_id: selectedTier.id })
       setSubmitted(true)
     } catch (err: any) {
       setError(err.response?.data?.error || 'Submission failed. Please try again.')

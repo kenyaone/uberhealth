@@ -20,8 +20,8 @@ export default function Pricing() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    api.get('/subscriptions/plans/').then(r => setPlans(r.data))
-    api.get('/corporate/tiers/').then(r => setEapTiers(r.data))
+    api.get('/subscriptions/plans').then(r => setPlans(r.data))
+    api.get('/corporate/tiers').then(r => setEapTiers(r.data))
   }, [])
 
   const userPlans = plans.filter(p => p.tier !== 'pro')
@@ -175,7 +175,7 @@ export default function Pricing() {
           ))}
         </div>
         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
-          <strong>Need a custom quote?</strong> Contact us at <a href="mailto:corporate@mhapke.com" className="underline">corporate@mhapke.com</a> for organisations with 500+ employees or special requirements.
+          <strong>Need a custom quote?</strong> Contact us at <a href="mailto:corporate@uberhealth.co.ke" className="underline">corporate@uberhealth.co.ke</a> for organisations with 500+ employees or special requirements.
         </div>
       </div>
 

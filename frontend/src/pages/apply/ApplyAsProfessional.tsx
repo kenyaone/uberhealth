@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
-import { CheckCircle, Shield, Clock, Upload } from 'lucide-react'
+import { CheckCircle, Shield, Clock } from 'lucide-react'
 import type { Specialization, Language } from '../../types'
 
 interface ApplyForm {
@@ -20,6 +20,9 @@ interface ApplyForm {
 export default function ApplyAsProfessional() {
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
+  const setAuth = useAuthStore(s => s.setAuth)
+  const token = useAuthStore(s => s.token)
+  const refresh = useAuthStore(s => s.refresh)
   const [specializations, setSpecializations] = useState<Specialization[]>([])
   const [languages, setLanguages] = useState<Language[]>([])
   const [selectedSpecs, setSelectedSpecs] = useState<number[]>([])
@@ -33,8 +36,8 @@ export default function ApplyAsProfessional() {
   })
 
   useEffect(() => {
-    api.get('/professionals/specializations/').then(r => setSpecializations(r.data))
-    api.get('/professionals/languages/').then(r => setLanguages(r.data))
+    api.get('/professionals/specializations').then(r => setSpecializations(r.data))
+    api.get('/professionals/languages').then(r => setLanguages(r.data))
   }, [])
 
   const toggleSpec = (id: number) =>
@@ -49,11 +52,14 @@ export default function ApplyAsProfessional() {
     setSubmitting(true)
     setError('')
     try {
-      await api.post('/professionals/register/', {
+      const res = await api.post('/professionals/register', {
         ...data,
         specialization_ids: selectedSpecs,
         language_ids: selectedLangs,
       })
+      if (res.data.user && token) {
+        setAuth(res.data.user, token, refresh ?? token)
+      }
       setSubmitted(true)
     } catch (err: any) {
       const d = err.response?.data

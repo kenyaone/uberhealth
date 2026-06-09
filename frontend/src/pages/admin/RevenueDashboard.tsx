@@ -22,7 +22,7 @@ export default function RevenueDashboard() {
   useEffect(() => {
     if (user?.role !== 'admin') { navigate('/dashboard'); return }
     Promise.all([
-      api.get('/payments/revenue/'),
+      api.get('/payments/revenue'),
       api.get('/professionals/admin/all/?status=verified'),
     ]).then(([rev, pros]) => {
       setData(rev.data)
