@@ -131,13 +131,13 @@ class AssessmentController extends Controller
 
     public function recommend(Request $request)
     {
-        $user = auth('api')->user();
-
         $assessmentType = $request->input('type');
-        $language       = $request->input('language');
-        $gender         = $request->input('gender');
+        $language       = $request->input('language');       // patient language preference
+        $genderPref     = $request->input('gender');         // patient gender preference
+        $score          = (int) $request->input('score', 0); // assessment raw score
+        $severity       = $request->input('severity', '');   // e.g. "Severe", "Moderate"
 
-        // Map assessment types to DB specialization names (must match SpecializationSeeder exactly)
+        // ── Specialization map ─────────────────────────────────────────────────
         $specMap = [
             'phq9'  => ['Depression & Mood', 'Anxiety & Stress', 'Trauma & PTSD'],
             'gad7'  => ['Anxiety & Stress', 'Depression & Mood', 'Trauma & PTSD'],
@@ -148,55 +148,103 @@ class AssessmentController extends Controller
 
         $targetSpecs = $specMap[$assessmentType] ?? [];
 
+        // ── Severity tier ──────────────────────────────────────────────────────
+        // Maps any assessment's severity string to a 3-tier level
+        $severityHigh = ['Severe', 'Moderately Severe', 'Possible Dependence', 'Severe (Problem Gambling)',
+                         'High Dependence', 'Very High Dependence', 'Harmful Use'];
+        $severityMid  = ['Moderate', 'Moderate Risk', 'Medium Dependence', 'Hazardous Use', 'Moderate Risk'];
+        $isSevere     = in_array($severity, $severityHigh);
+        $isModerate   = in_array($severity, $severityMid);
+
+        // ── Scoring weights ────────────────────────────────────────────────────
+        // Specialization:  primary=60  secondary=15  tertiary=5   max=80
+        // Rating:          0–20  (actual rating, 0 if unrated — no fake defaults)
+        // Experience:      0–10 normally; 0–15 for severe cases (depth matters more)
+        // Online sessions: +5 if is_available_online
+        // Language match:  +10 if patient language preference matches pro's languages
+        // Gender match:    +5 if patient gender preference matches pro's gender
+        // KMPDC:           hard gate already (verified only) — always shown as reason
+        // Accepting pats:  hard gate already — always shown as reason
+        //
+        // Practical max for a perfect severe match:  80+20+15+5+10+5 = 135
+        // Normalise against 120 so an excellent match (primary spec+great rating+exp+online+lang) ≈ 95%
+        $NORM = $isSevere ? 125.0 : 115.0;
+
         $professionals = \App\Models\Professional::with(['user:id,display_name,avatar', 'specializations', 'languages'])
             ->where('verification_status', 'verified')
             ->where('is_accepting_new_patients', true)
             ->get();
 
-        // Max possible score = 60 (primary spec) + 15+5 (secondary/tertiary) + 15 (rating) + 10 (exp) = 105
-        // Normalise against 95 so a good match (primary spec + solid rating + some exp) reads 90%+
-        $NORM = 95.0;
-
-        $topId = null;
-        $scored = $professionals->map(function ($pro) use ($targetSpecs, $language, $gender, $NORM) {
+        $scored = $professionals->map(function ($pro) use (
+            $targetSpecs, $language, $genderPref, $isSevere, $isModerate, $NORM
+        ) {
             $proSpecs = $pro->specializations->pluck('name')->toArray();
             $proLangs = $pro->languages->pluck('name')->toArray();
 
-            // Specialization score: primary=60, secondary=15, tertiary=5
+            // 1. Specialization — primary=60, secondary=15, tertiary=5
             $specWeights = [60, 15, 5];
-            $specScore = 0;
+            $specScore   = 0;
+            $primaryHit  = false;
             foreach ($targetSpecs as $i => $spec) {
-                // Case-insensitive partial match so minor naming differences don't break it
                 $matched = collect($proSpecs)->contains(
                     fn($ps) => stripos($ps, $spec) !== false || stripos($spec, $ps) !== false
                 );
                 if ($matched) {
                     $specScore += $specWeights[$i] ?? 5;
+                    if ($i === 0) $primaryHit = true;
                 }
             }
 
-            // Rating (0–15): use 4.0 as neutral default if null
-            $ratingScore = (($pro->rating ?? 4.0) / 5) * 15;
+            // 2. Rating — 0 if no reviews, never fake-defaulted
+            $ratingScore = $pro->rating ? ($pro->rating / 5) * 20 : 0;
 
-            // Experience (0–10)
-            $expScore = min((int)($pro->years_experience ?? 0), 10) / 10 * 10;
+            // 3. Experience — weighted higher for severe presentations
+            $exp = (int)($pro->years_experience ?? 0);
+            if ($isSevere) {
+                $expScore = min($exp, 15) / 15 * 15; // up to 15 pts for severe
+            } elseif ($isModerate) {
+                $expScore = min($exp, 10) / 10 * 12; // up to 12 pts for moderate
+            } else {
+                $expScore = min($exp, 10) / 10 * 10; // up to 10 pts standard
+            }
 
-            // Language bonus (+5 if filter set and matched)
-            $langScore = ($language && in_array($language, $proLangs)) ? 5 : 0;
+            // 4. Online availability
+            $onlineScore = $pro->is_available_online ? 5 : 0;
 
-            // Gender bonus (+3 if filter set and matched)
-            $genderScore = ($gender && $pro->gender === $gender) ? 3 : 0;
+            // 5. Language match — patient preference vs professional's listed languages
+            $langMatch   = $language && in_array($language, $proLangs);
+            $langScore   = $langMatch ? 10 : 0;
 
-            $total = $specScore + $ratingScore + $expScore + $langScore + $genderScore;
+            // 6. Gender preference match
+            $genderMatch = $genderPref && ($pro->gender === $genderPref);
+            $genderScore = $genderMatch ? 5 : 0;
+
+            $total    = $specScore + $ratingScore + $expScore + $onlineScore + $langScore + $genderScore;
             $matchPct = (int) min(100, round($total / $NORM * 100));
 
+            // ── Match reasons (clear, patient-facing) ──────────────────────────
             $reasons = [];
-            if ($specScore >= 60) $reasons[] = 'Specializes in your area';
-            elseif ($specScore > 0) $reasons[] = 'Related specialization';
-            if (($pro->rating ?? 0) >= 4.0) $reasons[] = 'Highly rated (' . number_format($pro->rating, 1) . '★)';
-            if ((int)($pro->years_experience ?? 0) >= 3) $reasons[] = ($pro->years_experience) . ' yrs experience';
-            if ($language && in_array($language, $proLangs)) $reasons[] = 'Speaks ' . $language;
-            if (empty($reasons)) $reasons[] = 'Verified professional';
+            $reasons[] = 'KMPDC Verified';
+            $reasons[] = 'Accepting new patients';
+            if ($primaryHit)              $reasons[] = 'Specializes in your condition';
+            elseif ($specScore > 0)       $reasons[] = 'Related specialization';
+            if ($pro->is_available_online) $reasons[] = 'Online sessions available';
+            if ($pro->rating >= 4.5)       $reasons[] = number_format($pro->rating, 1) . '★ — Excellent rating';
+            elseif ($pro->rating >= 4.0)   $reasons[] = number_format($pro->rating, 1) . '★ — Highly rated';
+            if ($exp >= 7)                 $reasons[] = $exp . ' yrs experience';
+            elseif ($exp >= 3)             $reasons[] = $exp . ' yrs experience';
+            if ($langMatch)                $reasons[] = 'Speaks ' . $language;
+            if ($genderMatch)              $reasons[] = ucfirst($genderPref) . ' therapist';
+
+            // ── Score breakdown (transparent to frontend) ─────────────────────
+            $breakdown = [
+                'specialization' => round($specScore),
+                'rating'         => round($ratingScore, 1),
+                'experience'     => round($expScore, 1),
+                'online'         => $onlineScore,
+                'language'       => $langScore,
+                'gender'         => $genderScore,
+            ];
 
             return [
                 'id'               => $pro->id,
@@ -209,27 +257,26 @@ class AssessmentController extends Controller
                 'total_reviews'    => $pro->total_reviews,
                 'years_experience' => $pro->years_experience,
                 'gender'           => $pro->gender,
+                'is_available_online' => $pro->is_available_online,
                 'specializations'  => $pro->specializations,
                 'languages'        => $pro->languages,
                 'match_score'      => round($total, 1),
                 'match_pct'        => $matchPct,
-                'match_reasons'    => array_values(array_filter($reasons)),
+                'match_reasons'    => array_values($reasons),
+                'score_breakdown'  => $breakdown,
                 'is_top_match'     => false,
             ];
         })->sortByDesc('match_score')->values();
 
-        // Tag top match by id
         if ($scored->count() > 0) {
             $topId = $scored->first()['id'];
+            $scored = $scored->map(fn($item) => array_merge($item, ['is_top_match' => $item['id'] === $topId]));
         }
-
-        $scored = $scored->map(function ($item) use ($topId) {
-            $item['is_top_match'] = $item['id'] === $topId;
-            return $item;
-        });
 
         return response()->json([
             'assessment_type' => $assessmentType,
+            'severity'        => $severity,
+            'score'           => $score,
             'matches'         => $scored->take(5),
             'total_available' => $scored->count(),
         ]);

@@ -42,6 +42,10 @@ export default function TakeAssessment() {
   const [aiInsightLoading, setAiInsightLoading] = useState(false)
   const [matches, setMatches] = useState<MatchedPro[]>([])
   const [matchExplanations, setMatchExplanations] = useState<Record<number, string>>({})
+  const [langFilter, setLangFilter] = useState('')
+  const [genderFilter, setGenderFilter] = useState('')
+  const [filterLoading, setFilterLoading] = useState(false)
+  const [savedResult, setSavedResult] = useState<any>(null)
 
   useEffect(() => {
     api.get(`/assessments/questions/${type}`).then(r => setData(r.data))
@@ -61,6 +65,29 @@ export default function TakeAssessment() {
     }
   }
 
+  const fetchMatches = async (res: any, lang = '', gender = '') => {
+    const params = new URLSearchParams({ type: type! })
+    if (res.score)    params.set('score', String(res.score))
+    if (res.severity) params.set('severity', res.severity)
+    if (lang)         params.set('language', lang)
+    if (gender)       params.set('gender', gender)
+
+    const r = await api.get(`/assessments/recommend?${params}`)
+    const topMatches: MatchedPro[] = r.data.matches ?? []
+    setMatches(topMatches)
+    setMatchExplanations({})
+    topMatches.slice(0, 3).forEach(pro => {
+      api.post('/ai/match-explain', {
+        professional_id: pro.id,
+        assessment_type: type,
+        match_pct: pro.match_pct,
+        match_reasons: pro.match_reasons,
+      })
+        .then(r => setMatchExplanations(prev => ({ ...prev, [pro.id]: r.data.explanation })))
+        .catch(() => {})
+    })
+  }
+
   const handleSubmit = async () => {
     setLoading(true)
     try {
@@ -68,8 +95,8 @@ export default function TakeAssessment() {
       const a = res.data.assessment ?? res.data
       const fullResult = { ...a, is_crisis_flag: res.data.crisis ?? a.is_crisis_flag }
       setResult(fullResult)
+      setSavedResult(fullResult)
 
-      // Fire AI insight + professional matching in parallel (non-blocking, graceful fallback)
       setAiInsightLoading(true)
       Promise.all([
         api.post('/ai/assessment-insight', {
@@ -79,27 +106,22 @@ export default function TakeAssessment() {
           interpretation: fullResult.interpretation,
         })
           .then(r => setAiInsight(r.data.insight || ''))
-          .catch(() => setAiInsight('')),  // falls back to result.recommendations below
+          .catch(() => setAiInsight('')),
 
-        !isProfessional
-          ? api.get(`/assessments/recommend?type=${type}`).then(async r => {
-              const topMatches: MatchedPro[] = r.data.matches ?? []
-              setMatches(topMatches)
-              topMatches.slice(0, 3).forEach(pro => {
-                api.post('/ai/match-explain', {
-                  professional_id: pro.id,
-                  assessment_type: type,
-                  match_pct: pro.match_pct,
-                  match_reasons: pro.match_reasons,
-                })
-                  .then(r => setMatchExplanations(prev => ({ ...prev, [pro.id]: r.data.explanation })))
-                  .catch(() => {})
-              })
-            }).catch(() => {})
-          : Promise.resolve(),
+        !isProfessional ? fetchMatches(fullResult) : Promise.resolve(),
       ]).finally(() => setAiInsightLoading(false))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleFilterChange = async (lang: string, gender: string) => {
+    if (!savedResult) return
+    setFilterLoading(true)
+    try {
+      await fetchMatches(savedResult, lang, gender)
+    } finally {
+      setFilterLoading(false)
     }
   }
 
@@ -159,9 +181,38 @@ export default function TakeAssessment() {
           {/* Matched Professionals */}
           {matches.length > 0 && (
             <div className="mb-5">
-              <div className="flex items-center gap-2 font-semibold text-gray-900 mb-3">
-                <Sparkles size={15} className="text-primary-600" />
-                Professionals matched to your results
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <div className="flex items-center gap-2 font-semibold text-gray-900">
+                  <Sparkles size={15} className="text-primary-600" />
+                  Professionals matched to your results
+                </div>
+                {filterLoading && <Loader2 size={14} className="animate-spin text-primary-500" />}
+              </div>
+
+              {/* Preference filters */}
+              <div className="flex gap-2 flex-wrap mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                <div className="text-xs text-gray-500 font-medium self-center mr-1">Refine:</div>
+                <select
+                  value={langFilter}
+                  onChange={e => { setLangFilter(e.target.value); handleFilterChange(e.target.value, genderFilter) }}
+                  className="text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary-400"
+                >
+                  <option value="">Any language</option>
+                  <option value="English">English</option>
+                  <option value="Kiswahili">Kiswahili</option>
+                  <option value="Kikuyu">Kikuyu</option>
+                  <option value="Luo">Luo</option>
+                  <option value="Kamba">Kamba</option>
+                </select>
+                <select
+                  value={genderFilter}
+                  onChange={e => { setGenderFilter(e.target.value); handleFilterChange(langFilter, e.target.value) }}
+                  className="text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary-400"
+                >
+                  <option value="">Any gender</option>
+                  <option value="male">Male therapist</option>
+                  <option value="female">Female therapist</option>
+                </select>
               </div>
               <div className="space-y-3">
                 {matches.slice(0, 3).map(pro => (
