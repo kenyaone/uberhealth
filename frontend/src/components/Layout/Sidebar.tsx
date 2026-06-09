@@ -2,7 +2,8 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, ClipboardList, Users, Calendar,
   Heart, TrendingUp, User, Leaf, ShieldCheck, Stethoscope,
-  DollarSign, Tag, BookOpen, MessageCircle, History, Clock, BarChart2
+  DollarSign, Tag, BookOpen, MessageCircle, History, Clock, BarChart2,
+  Shield, Target, Pill, Wind, Gift
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useT } from '../../contexts/I18nContext'
@@ -22,14 +23,21 @@ export default function Sidebar() {
     { to: '/progress', icon: BarChart2, label: 'My Progress' },
     { to: '/mood', icon: Heart, label: t('moodTracker') },
     { to: '/sobriety', icon: TrendingUp, label: t('sobriety') },
+    { to: '/safety-plan', icon: Shield, label: 'Safety Plan' },
+    { to: '/goals', icon: Target, label: 'My Goals' },
+    { to: '/medications', icon: Pill, label: 'Medications' },
+    { to: '/exercises', icon: Wind, label: 'Exercises' },
     { to: '/lessons', icon: BookOpen, label: t('recoveryLibrary') },
     { to: '/groups', icon: MessageCircle, label: t('supportGroups') },
+    { to: '/referral', icon: Gift, label: 'Referral & Promo' },
     { to: '/profile', icon: User, label: t('profile') },
   ]
 
   const professionalLinks = [
     { to: '/dashboard', icon: LayoutDashboard, label: t('dashboard') },
     { to: '/consultations', icon: Calendar, label: t('mySessions') },
+    { to: '/caseload', icon: Users, label: 'My Patients' },
+    { to: '/payouts', icon: DollarSign, label: 'Payouts' },
     { to: '/availability', icon: Clock, label: t('availability') },
     { to: '/profile', icon: User, label: t('profile') },
     { to: '/apply', icon: Stethoscope, label: t('myApplication') },

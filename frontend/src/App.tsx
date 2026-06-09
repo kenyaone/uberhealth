@@ -30,6 +30,14 @@ import SupportGroups from './pages/groups/SupportGroups'
 import GroupChat from './pages/groups/GroupChat'
 import FollowUpSurvey from './pages/surveys/FollowUpSurvey'
 import AvailabilityManager from './pages/professional/AvailabilityManager'
+import SafetyPlan from './pages/phr/SafetyPlan'
+import Goals from './pages/phr/Goals'
+import Medications from './pages/phr/Medications'
+import Caseload from './pages/professional/Caseload'
+import CaseloadPatient from './pages/professional/CaseloadPatient'
+import Payouts from './pages/professional/Payouts'
+import GuidedExercises from './pages/tools/GuidedExercises'
+import ReferralPromo from './pages/profile/ReferralPromo'
 import FAQ from './pages/legal/FAQ'
 import TermsOfService from './pages/legal/TermsOfService'
 import PrivacyPolicy from './pages/legal/PrivacyPolicy'
@@ -84,6 +92,14 @@ export default function App() {
           <Route path="/groups/:id" element={<GroupChat />} />
           <Route path="/surveys" element={<FollowUpSurvey />} />
           <Route path="/availability" element={<AvailabilityManager />} />
+          <Route path="/safety-plan" element={<SafetyPlan />} />
+          <Route path="/goals" element={<Goals />} />
+          <Route path="/medications" element={<Medications />} />
+          <Route path="/caseload" element={<Caseload />} />
+          <Route path="/caseload/:id" element={<CaseloadPatient />} />
+          <Route path="/payouts" element={<Payouts />} />
+          <Route path="/exercises" element={<GuidedExercises />} />
+          <Route path="/referral" element={<ReferralPromo />} />
         </Route>
       </Routes>
     </BrowserRouter>

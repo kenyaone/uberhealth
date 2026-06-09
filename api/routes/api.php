@@ -1,7 +1,13 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\CaseloadController;
 use App\Http\Controllers\ClinicalReceiptController;
+use App\Http\Controllers\GoalController;
+use App\Http\Controllers\MedicationController;
+use App\Http\Controllers\PromoCodeController;
+use App\Http\Controllers\SafetyPlanController;
+use App\Http\Controllers\WaitlistController;
 use App\Http\Controllers\AiController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\Auth\AuthController;
@@ -150,6 +156,43 @@ Route::middleware('auth:api')->group(function () {
     // Clinical receipt
     Route::get('/consultations/{id}/receipt', [ClinicalReceiptController::class, 'generate']);
 
+    // Safety plan
+    Route::get('/safety-plan', [SafetyPlanController::class, 'show']);
+    Route::post('/safety-plan', [SafetyPlanController::class, 'store']);
+    Route::post('/safety-plan/reviewed', [SafetyPlanController::class, 'markReviewed']);
+    Route::get('/patients/{id}/safety-plan', [SafetyPlanController::class, 'patientPlan']);
+
+    // Recovery goals
+    Route::get('/goals', [GoalController::class, 'index']);
+    Route::post('/goals', [GoalController::class, 'store']);
+    Route::put('/goals/{id}', [GoalController::class, 'update']);
+    Route::delete('/goals/{id}', [GoalController::class, 'destroy']);
+    Route::get('/patients/{id}/goals', [GoalController::class, 'patientGoals']);
+    Route::put('/goals/{id}/progress', [GoalController::class, 'updateProgress']);
+
+    // Medications
+    Route::get('/medications', [MedicationController::class, 'index']);
+    Route::post('/medications', [MedicationController::class, 'store']);
+    Route::put('/medications/{id}', [MedicationController::class, 'update']);
+    Route::post('/medications/{id}/log', [MedicationController::class, 'log']);
+    Route::get('/medications/{id}/logs', [MedicationController::class, 'logs']);
+
+    // Waitlist
+    Route::post('/professionals/{id}/waitlist', [WaitlistController::class, 'join']);
+    Route::delete('/professionals/{id}/waitlist', [WaitlistController::class, 'leave']);
+    Route::get('/my-waitlist', [WaitlistController::class, 'myWaitlist']);
+    Route::post('/professionals/{id}/waitlist/notify-next', [WaitlistController::class, 'notifyNext']);
+
+    // Promo codes
+    Route::post('/promo/validate', [PromoCodeController::class, 'validate']);
+    Route::post('/promo/redeem', [PromoCodeController::class, 'redeem']);
+    Route::get('/promo/my-referral', [PromoCodeController::class, 'myReferralCode']);
+
+    // Professional caseload
+    Route::get('/caseload', [CaseloadController::class, 'index']);
+    Route::get('/caseload/{id}', [CaseloadController::class, 'patient']);
+    Route::get('/professional/payouts', [CaseloadController::class, 'payoutStatement']);
+
     // Session feedback
     Route::post('/consultations/{consultationId}/feedback', [SessionFeedbackController::class, 'store']);
     Route::get('/feedback/mine', [SessionFeedbackController::class, 'myFeedback']);
@@ -193,5 +236,8 @@ Route::middleware('auth:api')->group(function () {
         // Moderation queue
         Route::get('/moderation/flagged', [AdminController::class, 'flaggedMessages']);
         Route::put('/groups/{id}/moderate/{msgId}', [AdminController::class, 'moderateMessage']);
+        // Promo code admin
+        Route::get('/promo-codes', [PromoCodeController::class, 'adminList']);
+        Route::post('/promo-codes', [PromoCodeController::class, 'adminCreate']);
     });
 });
