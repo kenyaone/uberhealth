@@ -2,7 +2,7 @@ from .base import *
 from decouple import config
 
 DEBUG = False
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='mhapke.com').split(',')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='uberhealth.co.ke').split(',')
 
 DATABASES = {
     'default': {
@@ -16,8 +16,8 @@ DATABASES = {
 }
 
 CORS_ALLOWED_ORIGINS = [
-    'https://mhapke.com',
-    'https://www.mhapke.com',
+    'https://uberhealth.co.ke',
+    'https://www.uberhealth.co.ke',
 ]
 
 SECURE_SSL_REDIRECT = True

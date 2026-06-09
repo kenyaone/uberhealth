@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'apps.crisis',
     'apps.subscriptions',
     'apps.corporate',
+    'apps.lessons',
 ]
 
 MIDDLEWARE = [
