@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Assessment;
 use App\Models\CrisisEvent;
+use App\Models\Notification;
+use App\Models\UserPresence;
 use App\Services\AssessmentEngine;
 use App\Services\CrisisDetector;
 use Illuminate\Http\Request;
@@ -336,6 +338,45 @@ class AssessmentController extends Controller
                 'response_action'   => 'Hotlines provided',
                 'resolved'          => false,
             ]);
+
+            // Immediate escalation — user is active right now, dispatch urgent alerts
+            $isOnline = UserPresence::where('user_id', $user->id)
+                ->where('last_seen_at', '>=', UserPresence::onlineCutoff())
+                ->exists();
+
+            $alertBody = "Patient \"{$user->display_name}\" scored {$result['score']} on "
+                . strtoupper($request->assessment_type)
+                . " ({$result['severity']}) and is currently ONLINE.";
+
+            Notification::sendToAdmins(
+                'crisis_alert',
+                'URGENT: Active crisis flagged',
+                $alertBody,
+                [
+                    'user_id'     => $user->id,
+                    'assessment'  => $request->assessment_type,
+                    'score'       => $result['score'],
+                    'severity'    => $result['severity'],
+                    'is_online'   => $isOnline,
+                ],
+                true
+            );
+
+            if ($isOnline) {
+                // Also alert online professionals so any available therapist can respond
+                Notification::sendToOnlineProfessionals(
+                    'crisis_alert',
+                    'URGENT: Patient needs immediate support',
+                    $alertBody,
+                    [
+                        'user_id'    => $user->id,
+                        'assessment' => $request->assessment_type,
+                        'score'      => $result['score'],
+                        'severity'   => $result['severity'],
+                    ],
+                    true
+                );
+            }
         }
 
         return response()->json([

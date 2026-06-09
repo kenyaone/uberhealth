@@ -8,8 +8,10 @@ use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\CorporateController;
 use App\Http\Controllers\CrisisController;
 use App\Http\Controllers\LessonController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PHRController;
+use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\ProfessionalController;
 use App\Http\Controllers\SubscriptionController;
 use Illuminate\Support\Facades\Route;
@@ -36,6 +38,9 @@ Route::post('/payments/b2c/timeout', [PaymentController::class, 'b2cTimeout']);
 
 // Assessment questions — public so TakeAssessment page works before submitting
 Route::get('/assessments/questions/{type}', [AssessmentController::class, 'questions']);
+
+// Online professionals — public so the Find Therapist page can show green dots without auth
+Route::get('/presence/professionals', [PresenceController::class, 'onlineProfessionals']);
 
 // Professional routes — specific routes must appear before {id} wildcard
 Route::get('/professionals', [ProfessionalController::class, 'index']);
@@ -119,6 +124,17 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/ai/match-explain', [AiController::class, 'matchExplain']);
     Route::get('/ai/progress-insight', [AiController::class, 'progressInsight']);
     Route::post('/ai/soap-notes', [AiController::class, 'soapNotes']);
+
+    // Presence
+    Route::post('/presence/heartbeat', [PresenceController::class, 'heartbeat']);
+    Route::post('/presence/offline', [PresenceController::class, 'offline']);
+    Route::post('/presence/typing', [PresenceController::class, 'typing']);
+    Route::post('/presence/status', [PresenceController::class, 'status']);
+    Route::get('/presence/consultation/{consultationId}', [PresenceController::class, 'consultationPresence']);
+
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/read', [NotificationController::class, 'markRead']);
 
     // Admin routes (role check via middleware)
     Route::middleware('can:admin')->prefix('admin')->group(function () {

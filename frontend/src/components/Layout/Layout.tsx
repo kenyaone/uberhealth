@@ -2,8 +2,11 @@ import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Navbar from './Navbar'
 import AiChat from '../AiChat'
+import { usePresenceHeartbeat } from '../../hooks/usePresence'
 
 export default function Layout() {
+  usePresenceHeartbeat()
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />

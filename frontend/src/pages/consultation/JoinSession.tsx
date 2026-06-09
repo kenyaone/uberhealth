@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
@@ -6,8 +6,18 @@ import {
   Video, Shield, ExternalLink, Star, FileText, Calendar,
   Download, Trash2, Share2, CheckCircle, Loader2, ClipboardList,
   AlertCircle, ChevronDown, ChevronUp, Clock, Sparkles,
-  Mic, VideoOff, MicOff, Copy, PlayCircle
+  Mic, VideoOff, MicOff, Copy, PlayCircle, Wifi, WifiOff
 } from 'lucide-react'
+
+interface PresenceEntry {
+  user_id: number
+  display_name: string
+  role: string
+  is_typing: boolean
+  last_seen_at: string
+}
+
+const PRESENCE_POLL_MS = 4_000
 
 type SessionPhase = 'loading' | 'ready' | 'joined' | 'error'
 
@@ -55,6 +65,22 @@ export default function JoinSession() {
   const [soapLoading, setSoapLoading] = useState(false)
   const [videoMode, setVideoMode] = useState<'video' | 'audio'>('video')
   const [cameraOff, setCameraOff] = useState(false)
+  const [sessionPresence, setSessionPresence] = useState<PresenceEntry[]>([])
+  const presenceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Poll session presence once the session is open in another tab
+  useEffect(() => {
+    if (phase !== 'joined' || !consultationId) return
+
+    const poll = () => {
+      api.get(`/presence/consultation/${consultationId}`)
+        .then(r => setSessionPresence(r.data.present ?? []))
+        .catch(() => {})
+    }
+    poll()
+    presenceTimerRef.current = setInterval(poll, PRESENCE_POLL_MS)
+    return () => { if (presenceTimerRef.current) clearInterval(presenceTimerRef.current) }
+  }, [phase, consultationId])
 
   useEffect(() => {
     api.post(`/consultations/${consultationId}/join`)
@@ -358,22 +384,62 @@ export default function JoinSession() {
 
       {/* Joined/Started state — session is open in another tab */}
       {!isCompleted && phase === 'joined' && (
-        <div className="card text-center py-6">
-          <Video size={36} className="text-green-500 mx-auto mb-3" />
-          <p className="font-medium text-gray-900 mb-1">
-            {is_professional ? 'Session is live in another tab' : 'Session is open in another tab'}
-          </p>
-          <p className="text-sm text-gray-500 mb-4">
-            {is_professional
-              ? 'Come back here when done to save your SOAP notes and end the session.'
-              : 'Come back here when your session ends to complete the session notes and actions.'}
-          </p>
-          <button
-            onClick={handleJoin}
-            className="btn-secondary text-sm flex items-center gap-1 mx-auto"
-          >
-            <ExternalLink size={14} /> {is_professional ? 'Reopen Session' : 'Rejoin Session'}
-          </button>
+        <div className="card space-y-4">
+          <div className="text-center py-4">
+            <Video size={36} className="text-green-500 mx-auto mb-3" />
+            <p className="font-medium text-gray-900 mb-1">
+              {is_professional ? 'Session is live in another tab' : 'Session is open in another tab'}
+            </p>
+            <p className="text-sm text-gray-500 mb-4">
+              {is_professional
+                ? 'Come back here when done to save your SOAP notes and end the session.'
+                : 'Come back here when your session ends to complete the session notes and actions.'}
+            </p>
+            <button
+              onClick={handleJoin}
+              className="btn-secondary text-sm flex items-center gap-1 mx-auto"
+            >
+              <ExternalLink size={14} /> {is_professional ? 'Reopen Session' : 'Rejoin Session'}
+            </button>
+          </div>
+
+          {/* Live session presence */}
+          <div className="border-t border-gray-100 pt-3">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              Who's in this session
+            </div>
+            {(() => {
+              const otherRole = is_professional ? 'user' : 'professional'
+              const otherLabel = is_professional ? 'Patient' : 'Therapist'
+              const others = sessionPresence.filter(p => p.role === otherRole)
+              const otherPresent = others.length > 0
+              const otherTyping = others.some(p => p.is_typing)
+
+              return (
+                <div className="flex items-center gap-3 text-sm">
+                  {otherPresent ? (
+                    <>
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
+                      <span className="text-gray-700">
+                        {others[0].display_name || otherLabel} is{' '}
+                        <span className="font-semibold text-green-700">in the session</span>
+                        {otherTyping && (
+                          <span className="ml-2 text-gray-400 italic text-xs">typing…</span>
+                        )}
+                      </span>
+                      <Wifi size={13} className="text-green-500 ml-auto" />
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2.5 h-2.5 rounded-full bg-gray-300 flex-shrink-0" />
+                      <span className="text-gray-400">Waiting for {otherLabel} to join…</span>
+                      <WifiOff size={13} className="text-gray-300 ml-auto" />
+                    </>
+                  )}
+                </div>
+              )
+            })()}
+          </div>
         </div>
       )}
 
