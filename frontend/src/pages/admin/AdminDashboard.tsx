@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import {
   CheckCircle, XCircle, Clock, Users, Star,
   ChevronDown, ChevronUp, BarChart2, DollarSign, AlertCircle, RotateCcw, Video,
-  MessageSquare, Shield, Plus, Trash2, Edit3, Eye
+  MessageSquare, Shield, Plus, Trash2, Edit3, Eye, Download
 } from 'lucide-react'
 
 interface Group {
@@ -159,9 +159,22 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Manage professional verifications and platform metrics.</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+          <p className="text-gray-500 text-sm mt-1">Manage professional verifications and platform metrics.</p>
+        </div>
+        <button
+          onClick={() => {
+            const from = new Date(); from.setMonth(from.getMonth() - 3)
+            const fromStr = from.toISOString().split('T')[0]
+            const toStr = new Date().toISOString().split('T')[0]
+            window.location.href = `https://api.uberhealth.co.ke/api/admin/sha-report?from=${fromStr}&to=${toStr}`
+          }}
+          className="btn-secondary flex items-center gap-2 text-sm"
+        >
+          <Download size={14} /> SHA Report (CSV)
+        </button>
       </div>
 
       {/* Stats */}

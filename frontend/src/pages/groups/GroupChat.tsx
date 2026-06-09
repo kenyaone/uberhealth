@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
-import { Send, ArrowLeft, Users, Shield, Loader2 } from 'lucide-react'
+import { Send, ArrowLeft, Users, Shield, Loader2, Video } from 'lucide-react'
 import { useT } from '../../contexts/I18nContext'
 
 interface Msg {
@@ -93,6 +93,15 @@ export default function GroupChat() {
             <Shield size={10} /> Anonymous · All messages are private to group members
           </div>
         </div>
+        <a
+          href={`https://meet.jit.si/AfyaYakoGroup-${id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+          title="Join group video call"
+        >
+          <Video size={13} /> Group Video
+        </a>
       </div>
 
       {error ? (

@@ -8,6 +8,8 @@ use App\Http\Controllers\MedicationController;
 use App\Http\Controllers\PromoCodeController;
 use App\Http\Controllers\SafetyPlanController;
 use App\Http\Controllers\WaitlistController;
+use App\Http\Controllers\JournalController;
+use App\Http\Controllers\SessionTemplateController;
 use App\Http\Controllers\AiController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\Auth\AuthController;
@@ -188,6 +190,22 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/promo/redeem', [PromoCodeController::class, 'redeem']);
     Route::get('/promo/my-referral', [PromoCodeController::class, 'myReferralCode']);
 
+    // Private journal
+    Route::get('/journal', [JournalController::class, 'index']);
+    Route::post('/journal', [JournalController::class, 'store']);
+    Route::get('/journal/{id}', [JournalController::class, 'show']);
+    Route::put('/journal/{id}', [JournalController::class, 'update']);
+    Route::delete('/journal/{id}', [JournalController::class, 'destroy']);
+
+    // Session templates (professionals)
+    Route::get('/session-templates', [SessionTemplateController::class, 'index']);
+    Route::post('/session-templates', [SessionTemplateController::class, 'store']);
+    Route::put('/session-templates/{id}', [SessionTemplateController::class, 'update']);
+    Route::delete('/session-templates/{id}', [SessionTemplateController::class, 'destroy']);
+
+    // EAP employer dashboard
+    Route::get('/corporate/eap-stats', [CorporateController::class, 'eapStats']);
+
     // Professional caseload
     Route::get('/caseload', [CaseloadController::class, 'index']);
     Route::get('/caseload/{id}', [CaseloadController::class, 'patient']);
@@ -239,5 +257,7 @@ Route::middleware('auth:api')->group(function () {
         // Promo code admin
         Route::get('/promo-codes', [PromoCodeController::class, 'adminList']);
         Route::post('/promo-codes', [PromoCodeController::class, 'adminCreate']);
+        // SHA accreditation report
+        Route::get('/sha-report', [AdminController::class, 'shaReport']);
     });
 });

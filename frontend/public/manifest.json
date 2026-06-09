@@ -1,0 +1,20 @@
+{
+  "name": "Afya Yako Siri Yako",
+  "short_name": "AfyaYako",
+  "description": "Mental health support — Your Health, Your Secret",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a5e2a",
+  "theme_color": "#166534",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "medical"],
+  "lang": "en"
+}

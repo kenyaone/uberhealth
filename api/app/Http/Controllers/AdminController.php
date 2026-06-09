@@ -199,4 +199,55 @@ class AdminController extends Controller
         $msg->update(['is_moderated' => true, 'moderated_at' => now()]);
         return response()->json(['message' => 'Message hidden.']);
     }
+
+    // ─── SHA Accreditation Report ─────────────────────────────────────────────
+
+    public function shaReport(Request $request)
+    {
+        $from = $request->query('from', now()->subMonths(3)->toDateString());
+        $to   = $request->query('to', now()->toDateString());
+
+        $consultations = \App\Models\Consultation::with(['user:id,display_name', 'professional:id,user_id,kmpdc_license', 'professional.user:id,display_name'])
+            ->where('status', 'completed')
+            ->whereBetween('scheduled_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
+            ->orderBy('scheduled_at')
+            ->get();
+
+        // ICD-10 mapping from last assessment
+        $icd10Map = [
+            'phq9'  => 'F32.9',
+            'gad7'  => 'F41.1',
+            'audit' => 'F10.10',
+            'dast10'=> 'F19.10',
+            'pgsi'  => 'F63.0',
+        ];
+
+        $rows = $consultations->map(function ($c) use ($icd10Map) {
+            $assessment = \App\Models\Assessment::where('user_id', $c->user_id)
+                ->where('created_at', '<=', $c->scheduled_at)
+                ->orderByDesc('created_at')->first();
+
+            return [
+                'date'          => $c->scheduled_at->toDateString(),
+                'session_id'    => $c->consultation_id,
+                'patient'       => $c->user?->display_name ?? 'N/A',
+                'therapist'     => $c->professional?->user?->display_name ?? 'N/A',
+                'kmpdc_license' => $c->professional?->kmpdc_license ?? 'N/A',
+                'icd10_code'    => $icd10Map[$assessment?->assessment_type] ?? 'Z04.6',
+                'diagnosis'     => $assessment?->severity ?? 'N/A',
+                'duration_mins' => 60,
+                'platform'      => 'Afya Yako Siri Yako — mhapke.com',
+            ];
+        });
+
+        $csv = implode("\n", array_merge(
+            [implode(',', ['Date', 'Session ID', 'Patient', 'Therapist', 'KMPDC License', 'ICD-10', 'Diagnosis', 'Duration (mins)', 'Platform'])],
+            $rows->map(fn($r) => implode(',', array_values($r)))->toArray()
+        ));
+
+        return response($csv, 200, [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="sha_report_' . $from . '_' . $to . '.csv"',
+        ]);
+    }
 }

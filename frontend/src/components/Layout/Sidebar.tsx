@@ -3,7 +3,7 @@ import {
   LayoutDashboard, ClipboardList, Users, Calendar,
   Heart, TrendingUp, User, Leaf, ShieldCheck, Stethoscope,
   DollarSign, Tag, BookOpen, MessageCircle, History, Clock, BarChart2,
-  Shield, Target, Pill, Wind, Gift
+  Shield, Target, Pill, Wind, Gift, BookMarked, Award, FileText, Building2
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useT } from '../../contexts/I18nContext'
@@ -29,6 +29,8 @@ export default function Sidebar() {
     { to: '/exercises', icon: Wind, label: 'Exercises' },
     { to: '/lessons', icon: BookOpen, label: t('recoveryLibrary') },
     { to: '/groups', icon: MessageCircle, label: t('supportGroups') },
+    { to: '/journal', icon: BookMarked, label: 'My Journal' },
+    { to: '/certificate', icon: Award, label: 'Certificate' },
     { to: '/referral', icon: Gift, label: 'Referral & Promo' },
     { to: '/profile', icon: User, label: t('profile') },
   ]
@@ -37,6 +39,7 @@ export default function Sidebar() {
     { to: '/dashboard', icon: LayoutDashboard, label: t('dashboard') },
     { to: '/consultations', icon: Calendar, label: t('mySessions') },
     { to: '/caseload', icon: Users, label: 'My Patients' },
+    { to: '/templates', icon: FileText, label: 'Note Templates' },
     { to: '/payouts', icon: DollarSign, label: 'Payouts' },
     { to: '/availability', icon: Clock, label: t('availability') },
     { to: '/profile', icon: User, label: t('profile') },
@@ -48,6 +51,7 @@ export default function Sidebar() {
     { to: '/admin', icon: ShieldCheck, label: 'Verify Professionals' },
     { to: '/admin/revenue', icon: DollarSign, label: 'Revenue' },
     { to: '/professionals', icon: Users, label: 'All Professionals' },
+    { to: '/eap-dashboard', icon: Building2, label: 'EAP Dashboard' },
     { to: '/profile', icon: User, label: t('profile') },
   ]
 

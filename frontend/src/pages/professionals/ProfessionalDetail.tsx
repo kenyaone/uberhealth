@@ -2,17 +2,34 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import api from '../../api/axios'
 import type { Professional } from '../../types'
-import { Star, Clock, Globe, ChevronLeft, CheckCircle } from 'lucide-react'
+import { Star, Clock, Globe, ChevronLeft, CheckCircle, Bell, BellOff } from 'lucide-react'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 export default function ProfessionalDetail() {
   const { id } = useParams()
   const [pro, setPro] = useState<Professional | null>(null)
+  const [onWaitlist, setOnWaitlist] = useState(false)
+  const [waitlistLoading, setWaitlistLoading] = useState(false)
 
   useEffect(() => {
     api.get(`/professionals/${id}`).then(r => setPro(r.data.professional ?? r.data))
   }, [id])
+
+  const toggleWaitlist = async () => {
+    if (!id) return
+    setWaitlistLoading(true)
+    try {
+      if (onWaitlist) {
+        await api.delete(`/professionals/${id}/waitlist`)
+        setOnWaitlist(false)
+      } else {
+        await api.post(`/professionals/${id}/waitlist`, {})
+        setOnWaitlist(true)
+      }
+    } catch {}
+    finally { setWaitlistLoading(false) }
+  }
 
   if (!pro) return <div className="text-center py-10 text-gray-400">Loading...</div>
 
@@ -81,9 +98,21 @@ export default function ProfessionalDetail() {
         </div>
       )}
 
-      <Link to={`/book/${pro.id}`} className="btn-primary w-full text-center py-3 block text-base">
-        Book a Session with {pro.display_name}
-      </Link>
+      <div className="flex gap-3">
+        <Link to={`/book/${pro.id}`} className="btn-primary flex-1 text-center py-3 block text-base">
+          Book a Session
+        </Link>
+        <button onClick={toggleWaitlist} disabled={waitlistLoading}
+          title={onWaitlist ? 'Leave waitlist' : 'Join waitlist — get notified when a slot opens'}
+          className={`flex items-center gap-2 px-4 py-3 rounded-lg border font-medium text-sm transition-colors ${
+            onWaitlist
+              ? 'bg-amber-50 border-amber-400 text-amber-700 hover:bg-amber-100'
+              : 'bg-white border-gray-300 text-gray-600 hover:border-teal-400 hover:text-teal-700'
+          }`}>
+          {onWaitlist ? <BellOff size={16} /> : <Bell size={16} />}
+          {onWaitlist ? 'On waitlist' : 'Waitlist'}
+        </button>
+      </div>
     </div>
   )
 }

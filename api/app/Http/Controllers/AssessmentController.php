@@ -397,6 +397,30 @@ class AssessmentController extends Controller
                     true
                 );
             }
+
+            // Also notify the patient's own therapist (most recent completed session)
+            $assignedPro = \App\Models\Consultation::where('user_id', $user->id)
+                ->whereIn('status', ['completed', 'confirmed'])
+                ->orderByDesc('scheduled_at')
+                ->with('professional.user')
+                ->first()?->professional;
+
+            if ($assignedPro?->user?->email) {
+                try {
+                    \Illuminate\Support\Facades\Mail::raw(
+                        "URGENT CRISIS ALERT\n\n"
+                        . "Your patient \"{$user->display_name}\" has just completed a "
+                        . strtoupper($request->assessment_type) . " assessment with a score of "
+                        . "{$result['score']} ({$result['severity']}).\n\n"
+                        . "PHQ-9 Question 9 (suicidal ideation) was flagged as non-zero.\n\n"
+                        . "Please reach out to this patient as soon as possible.\n\n"
+                        . "Log in to review: https://mhapke.com/caseload/{$user->id}\n\n"
+                        . "— Afya Yako Siri Yako Crisis System",
+                        fn($m) => $m->to($assignedPro->user->email)
+                            ->subject("⚠️ URGENT: Patient {$user->display_name} flagged — crisis score")
+                    );
+                } catch (\Exception $e) {}
+            }
         }
 
         return response()->json([

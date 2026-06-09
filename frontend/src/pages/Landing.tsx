@@ -262,6 +262,86 @@ function MarqueeStrip() {
   )
 }
 
+// ── Chatbot Triage Widget ──────────────────────────────────────────────────
+
+const TRIAGE_STEPS = [
+  {
+    q: 'What brings you here today?',
+    opts: [
+      { label: '😔 I feel depressed or hopeless',   next: 'phq9'     },
+      { label: '😰 I feel anxious or overwhelmed',  next: 'gad7'     },
+      { label: '🍺 I want to reduce alcohol or drug use', next: 'audit' },
+      { label: '🎰 I have a gambling problem',      next: 'pgsi'     },
+      { label: '💬 I just need someone to talk to', next: 'talk'     },
+    ],
+  },
+]
+
+const TRIAGE_RESULTS: Record<string, { msg: string; link: string; label: string }> = {
+  phq9:  { msg: "It sounds like you may be experiencing depression. A PHQ-9 assessment takes 2 minutes and connects you with the right therapist.", link: '/assessments/phq9', label: 'Take PHQ-9 Assessment →' },
+  gad7:  { msg: "Anxiety is very common and very treatable. Let's measure where you are with a quick GAD-7 screening.", link: '/assessments/gad7', label: 'Take GAD-7 Assessment →' },
+  audit: { msg: "Taking this step takes real courage. An AUDIT screening will help us understand your needs and match you with the right specialist.", link: '/assessments/audit', label: 'Take AUDIT Screening →' },
+  pgsi:  { msg: "You're not alone. Gambling problems affect many people. A quick PGSI screening helps us find the right support for you.", link: '/assessments/pgsi', label: 'Take PGSI Screening →' },
+  talk:  { msg: "Sometimes you just need a safe space to be heard. Our verified therapists offer judgement-free sessions.", link: '/professionals', label: 'Browse Therapists →' },
+}
+
+function ChatbotTriage() {
+  const [open, setOpen] = useState(false)
+  const [step, setStep] = useState(0)
+  const [result, setResult] = useState<string | null>(null)
+
+  const reset = () => { setStep(0); setResult(null) }
+
+  return (
+    <>
+      {/* Floating trigger */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-teal-700 hover:bg-teal-600 rounded-full shadow-xl flex items-center justify-center text-white text-2xl transition-all"
+        aria-label="Get help"
+      >
+        {open ? '×' : '💬'}
+      </button>
+
+      {open && (
+        <div className="fixed bottom-24 right-6 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+          <div className="bg-teal-700 px-4 py-3 flex items-center justify-between">
+            <div>
+              <p className="text-white font-semibold text-sm">Afya Yako Support</p>
+              <p className="text-teal-200 text-xs">Let us find the right help for you</p>
+            </div>
+            <button onClick={() => setOpen(false)} className="text-teal-200 hover:text-white text-lg">×</button>
+          </div>
+          <div className="p-4 space-y-3">
+            {result ? (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-700 leading-relaxed">{TRIAGE_RESULTS[result].msg}</p>
+                <Link to={TRIAGE_RESULTS[result].link}
+                  onClick={() => setOpen(false)}
+                  className="block w-full bg-teal-700 hover:bg-teal-600 text-white text-center text-sm font-semibold py-2.5 rounded-lg transition-colors">
+                  {TRIAGE_RESULTS[result].label}
+                </Link>
+                <button onClick={reset} className="w-full text-xs text-gray-400 hover:text-gray-600">← Start over</button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-gray-800">{TRIAGE_STEPS[step].q}</p>
+                {TRIAGE_STEPS[step].opts.map((opt) => (
+                  <button key={opt.label} onClick={() => setResult(opt.next)}
+                    className="w-full text-left text-sm px-3 py-2 rounded-lg border border-gray-200 hover:border-teal-400 hover:bg-teal-50 transition-colors text-gray-700">
+                    {opt.label}
+                  </button>
+                ))}
+                <p className="text-xs text-gray-400 text-center pt-1">Anonymous. No sign-up needed to explore.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function Landing() {
   return (
     <div className="min-h-screen font-sans">
@@ -598,6 +678,9 @@ export default function Landing() {
           KMPDC-Verified Therapists Only
         </div>
       </section>
+
+      {/* Chatbot Triage Widget */}
+      <ChatbotTriage />
 
       {/* Crisis Banner */}
       <div className="bg-red-700 text-white text-center py-4 px-4 text-xs md:text-sm">

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import { I18nProvider } from './contexts/I18nContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import Layout from './components/Layout/Layout'
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
@@ -38,6 +39,10 @@ import CaseloadPatient from './pages/professional/CaseloadPatient'
 import Payouts from './pages/professional/Payouts'
 import GuidedExercises from './pages/tools/GuidedExercises'
 import ReferralPromo from './pages/profile/ReferralPromo'
+import Journal from './pages/phr/Journal'
+import SessionTemplates from './pages/professional/SessionTemplates'
+import ProgressCertificate from './pages/tools/ProgressCertificate'
+import EAPDashboard from './pages/corporate/EAPDashboard'
 import FAQ from './pages/legal/FAQ'
 import TermsOfService from './pages/legal/TermsOfService'
 import PrivacyPolicy from './pages/legal/PrivacyPolicy'
@@ -55,6 +60,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
+    <ThemeProvider>
     <I18nProvider>
     <BrowserRouter>
       <Routes>
@@ -100,9 +106,14 @@ export default function App() {
           <Route path="/payouts" element={<Payouts />} />
           <Route path="/exercises" element={<GuidedExercises />} />
           <Route path="/referral" element={<ReferralPromo />} />
+          <Route path="/journal" element={<Journal />} />
+          <Route path="/templates" element={<SessionTemplates />} />
+          <Route path="/certificate" element={<ProgressCertificate />} />
+          <Route path="/eap-dashboard" element={<EAPDashboard />} />
         </Route>
       </Routes>
     </BrowserRouter>
     </I18nProvider>
+    </ThemeProvider>
   )
 }
