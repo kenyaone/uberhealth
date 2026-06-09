@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ClinicalReceiptController;
 use App\Http\Controllers\AiController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\Auth\AuthController;
@@ -146,6 +147,9 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/read', [NotificationController::class, 'markRead']);
 
+    // Clinical receipt
+    Route::get('/consultations/{id}/receipt', [ClinicalReceiptController::class, 'generate']);
+
     // Session feedback
     Route::post('/consultations/{consultationId}/feedback', [SessionFeedbackController::class, 'store']);
     Route::get('/feedback/mine', [SessionFeedbackController::class, 'myFeedback']);
@@ -181,6 +185,13 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/consultations', [AdminController::class, 'consultations']);
         Route::put('/consultations/{id}/confirm', [AdminController::class, 'confirmConsultation']);
         Route::get('/workload', [AdminController::class, 'workload']);
-        Route::put('/groups/{id}/moderate/{msgId}', [SupportGroupController::class, 'moderate']);
+        // Support groups management
+        Route::get('/groups', [AdminController::class, 'listGroups']);
+        Route::post('/groups', [AdminController::class, 'createGroup']);
+        Route::put('/groups/{id}', [AdminController::class, 'updateGroup']);
+        Route::delete('/groups/{id}', [AdminController::class, 'deleteGroup']);
+        // Moderation queue
+        Route::get('/moderation/flagged', [AdminController::class, 'flaggedMessages']);
+        Route::put('/groups/{id}/moderate/{msgId}', [AdminController::class, 'moderateMessage']);
     });
 });

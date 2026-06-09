@@ -117,6 +117,7 @@ export default function MyConsultations() {
                   {c.status === 'completed' && !isProfessional && (
                     <>
                       <RequestNotesButton consultationId={c.id} alreadyRequested={!!c.notes_requested_at} />
+                      <ReceiptButton consultationId={(c as any).consultation_id} />
                       <Link
                         to={`/book/${c.professional_id ?? (typeof c.professional === 'object' ? (c.professional as any).id : c.professional)}`}
                         state={{ is_follow_up: true, parent_id: c.id }}
@@ -153,6 +154,54 @@ function RequestNotesButton({ consultationId, alreadyRequested }: { consultation
   ) : (
     <button onClick={handleRequest} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
       <FileText size={13} /> Request Notes
+    </button>
+  )
+}
+
+function ReceiptButton({ consultationId }: { consultationId: string }) {
+  const [loading, setLoading] = useState(false)
+
+  const download = async () => {
+    if (!consultationId) return
+    setLoading(true)
+    try {
+      const r = await api.get(`/consultations/${consultationId}/receipt`)
+      const d = r.data.receipt
+      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Clinical Receipt ${d.receipt_number}</title>
+<style>body{font-family:sans-serif;max-width:600px;margin:40px auto;padding:20px;color:#111}
+h1{color:#0d9488;font-size:20px}table{width:100%;border-collapse:collapse;margin:16px 0}
+td{padding:8px 10px;border:1px solid #e5e7eb;font-size:13px}td:first-child{background:#f9fafb;font-weight:600;width:40%}
+.header{border-bottom:2px solid #0d9488;padding-bottom:12px;margin-bottom:20px}
+.footer{margin-top:24px;font-size:11px;color:#9ca3af;text-align:center}</style></head>
+<body><div class="header"><h1>Afya Yako Siri Yako — Clinical Receipt</h1>
+<p style="margin:4px 0;font-size:13px;color:#6b7280">${d.platform_url} · For insurance reimbursement</p></div>
+<table>
+<tr><td>Receipt No.</td><td>${d.receipt_number}</td></tr>
+<tr><td>Session ID</td><td>${d.consultation_id}</td></tr>
+<tr><td>Issue Date</td><td>${d.issue_date}</td></tr>
+<tr><td>Session Date &amp; Time</td><td>${d.session_date} (EAT)</td></tr>
+<tr><td>Duration</td><td>${d.duration_minutes} minutes</td></tr>
+<tr><td>Patient</td><td>${d.patient_name}</td></tr>
+<tr><td>Therapist</td><td>${d.therapist_name}</td></tr>
+<tr><td>KMPDC License No.</td><td>${d.kmpdc_license}</td></tr>
+<tr><td>Service</td><td>${d.service_type}</td></tr>
+<tr><td>ICD-10 Code</td><td>${d.icd10_code} — ${d.icd10_description}</td></tr>
+<tr><td><strong>Amount (KES)</strong></td><td><strong>${d.amount_kes}</strong></td></tr>
+</table>
+<p style="font-size:12px;color:#4b5563">This receipt is issued for insurance reimbursement purposes. The session was conducted via secure encrypted telehealth video (Jitsi Meet). For insurer queries contact: billing@mhapke.com</p>
+<div class="footer">Afya Yako Siri Yako · mhapke.com · Nairobi, Kenya</div></body></html>`
+      const blob = new Blob([html], { type: 'text/html' })
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `receipt-${d.receipt_number}.html`
+      a.click()
+    } catch {}
+    finally { setLoading(false) }
+  }
+
+  return (
+    <button onClick={download} disabled={loading} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+      <FileText size={13} /> {loading ? '…' : 'Receipt'}
     </button>
   )
 }

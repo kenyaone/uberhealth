@@ -2,12 +2,25 @@ import { useEffect, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../api/axios'
 import type { Professional } from '../../types'
-import { Star, Search, Wifi } from 'lucide-react'
+import { Star, Search, Wifi, AlertCircle, CheckCircle } from 'lucide-react'
 
 const PRESENCE_POLL_MS = 60_000
 
+type ProWithScore = Professional & { match_score?: number }
+
+function MatchBadge({ score }: { score?: number }) {
+  if (!score) return null
+  const color = score >= 80 ? 'bg-green-100 text-green-700' : score >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'
+  const label = score >= 80 ? 'Top match' : score >= 60 ? 'Good match' : 'Available'
+  return (
+    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${color}`}>
+      {score}% {label}
+    </span>
+  )
+}
+
 export default function Professionals() {
-  const [professionals, setProfessionals] = useState<Professional[]>([])
+  const [professionals, setProfessionals] = useState<ProWithScore[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [specialization, setSpecialization] = useState('')
@@ -15,7 +28,6 @@ export default function Professionals() {
   const [onlineUserIds, setOnlineUserIds] = useState<number[]>([])
   const presenceRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Presence polling (uses user_id from professional.user field)
   const fetchPresence = () => {
     api.get('/presence/professionals')
       .then(r => setOnlineUserIds(r.data.online_user_ids ?? []))
@@ -36,12 +48,23 @@ export default function Professionals() {
 
     setLoading(true)
     api.get(`/professionals?${params.toString()}`)
-      .then(r => setProfessionals(r.data.data?.data ?? r.data.data ?? r.data.results ?? r.data))
+      .then(r => {
+        const list: ProWithScore[] = r.data.data?.data ?? r.data.data ?? r.data.results ?? r.data
+        // Sort by match_score desc if scores are present
+        if (list.some(p => p.match_score)) {
+          list.sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0))
+        }
+        setProfessionals(list)
+      })
       .finally(() => setLoading(false))
   }, [search, specialization, maxRate])
 
-  const isOnline = (pro: Professional) =>
+  const isOnline = (pro: ProWithScore) =>
     onlineUserIds.includes((pro as any).user_id ?? (pro as any).user?.id ?? -1)
+
+  const topScore = professionals[0]?.match_score
+  const hasScores = professionals.some(p => p.match_score)
+  const lowMatchMode = hasScores && topScore !== undefined && topScore < 80
 
   return (
     <div className="space-y-6">
@@ -62,11 +85,7 @@ export default function Professionals() {
               placeholder="Search by name, issue..."
             />
           </div>
-          <select
-            value={specialization}
-            onChange={e => setSpecialization(e.target.value)}
-            className="input-field"
-          >
+          <select value={specialization} onChange={e => setSpecialization(e.target.value)} className="input-field">
             <option value="">All Specializations</option>
             <option value="depression">Depression</option>
             <option value="anxiety">Anxiety</option>
@@ -84,6 +103,38 @@ export default function Professionals() {
         </div>
       </div>
 
+      {/* Low-match fallback banner */}
+      {!loading && lowMatchMode && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex gap-3 items-start">
+          <AlertCircle size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-800">Closest available matches shown</p>
+            <p className="text-sm text-amber-700 mt-0.5">
+              We couldn't find a therapist with a match score above 80% for your profile right now.
+              These are the best available professionals — our network is growing.
+              Try removing a filter or{' '}
+              <button
+                onClick={() => { setSpecialization(''); setMaxRate(''); setSearch('') }}
+                className="underline font-medium"
+              >
+                clear all filters
+              </button>{' '}
+              to see more options.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* High-match banner */}
+      {!loading && hasScores && !lowMatchMode && topScore && topScore >= 80 && (
+        <div className="bg-green-50 border border-green-200 rounded-xl px-5 py-3 flex gap-2 items-center">
+          <CheckCircle size={16} className="text-green-600" />
+          <p className="text-sm text-green-800">
+            <strong>AI matched</strong> — therapists are sorted by how well they match your assessment results and preferences.
+          </p>
+        </div>
+      )}
+
       {loading ? (
         <div className="text-center py-10 text-gray-400">Loading professionals...</div>
       ) : professionals.length === 0 ? (
@@ -97,26 +148,23 @@ export default function Professionals() {
             return (
               <div key={pro.id} className="card hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
-                  {/* Avatar with online dot */}
                   <div className="relative flex-shrink-0">
                     <div className="w-14 h-14 rounded-xl bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xl">
                       {pro.display_name.charAt(0).toUpperCase()}
                     </div>
                     {online && (
-                      <span
-                        className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 border-2 border-white rounded-full"
-                        title="Online now"
-                      />
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 border-2 border-white rounded-full" title="Online now" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-gray-900">{pro.display_name}</span>
                       {online && (
                         <span className="flex items-center gap-1 text-[10px] text-green-600 font-medium bg-green-50 px-1.5 py-0.5 rounded-full">
                           <Wifi size={10} /> Online
                         </span>
                       )}
+                      <MatchBadge score={pro.match_score} />
                     </div>
                     <div className="flex items-center gap-1 text-sm text-amber-500 mt-0.5">
                       <Star size={14} fill="currentColor" />

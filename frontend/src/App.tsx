@@ -25,6 +25,7 @@ import Corporate from './pages/corporate/Corporate'
 import Lessons from './pages/lessons/Lessons'
 import LessonDetail from './pages/lessons/LessonDetail'
 import SessionHistory from './pages/history/SessionHistory'
+import ProgressDashboard from './pages/dashboard/ProgressDashboard'
 import SupportGroups from './pages/groups/SupportGroups'
 import GroupChat from './pages/groups/GroupChat'
 import FollowUpSurvey from './pages/surveys/FollowUpSurvey'
@@ -78,6 +79,7 @@ export default function App() {
           <Route path="/lessons" element={<Lessons />} />
           <Route path="/lessons/:slug" element={<LessonDetail />} />
           <Route path="/history" element={<SessionHistory />} />
+          <Route path="/progress" element={<ProgressDashboard />} />
           <Route path="/groups" element={<SupportGroups />} />
           <Route path="/groups/:id" element={<GroupChat />} />
           <Route path="/surveys" element={<FollowUpSurvey />} />

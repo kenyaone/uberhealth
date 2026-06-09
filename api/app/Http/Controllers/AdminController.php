@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Consultation;
 use App\Models\CrisisEvent;
+use App\Models\GroupMessage;
 use App\Models\Payment;
 use App\Models\Professional;
+use App\Models\SupportGroup;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -123,5 +125,78 @@ class AdminController extends Controller
         if (!$consultation) return response()->json(['error' => 'Not found'], 404);
         $consultation->update(['status' => 'confirmed']);
         return response()->json(['message' => 'Confirmed.', 'consultation' => $consultation]);
+    }
+
+    // ─── Support Group Management ─────────────────────────────────────────────
+
+    public function listGroups()
+    {
+        $groups = SupportGroup::orderBy('name')->get();
+        return response()->json(['groups' => $groups]);
+    }
+
+    public function createGroup(Request $request)
+    {
+        $v = Validator::make($request->all(), [
+            'name'        => 'required|string|max:100',
+            'description' => 'required|string',
+            'category'    => 'required|string|max:50',
+            'icon'        => 'nullable|string|max:10',
+            'is_active'   => 'boolean',
+        ]);
+        if ($v->fails()) return response()->json(['error' => $v->errors()->first()], 422);
+
+        $slug = \Illuminate\Support\Str::slug($request->name);
+        $base = $slug;
+        $i = 1;
+        while (SupportGroup::where('slug', $slug)->exists()) {
+            $slug = $base . '-' . $i++;
+        }
+
+        $group = SupportGroup::create([
+            'name'        => $request->name,
+            'slug'        => $slug,
+            'description' => $request->description,
+            'category'    => $request->category,
+            'icon'        => $request->icon ?? '💬',
+            'is_active'   => $request->boolean('is_active', true),
+            'member_count'=> 0,
+        ]);
+
+        return response()->json(['message' => 'Group created.', 'group' => $group], 201);
+    }
+
+    public function updateGroup(Request $request, int $id)
+    {
+        $group = SupportGroup::findOrFail($id);
+        $group->update($request->only(['name', 'description', 'category', 'icon', 'is_active']));
+        return response()->json(['message' => 'Group updated.', 'group' => $group]);
+    }
+
+    public function deleteGroup(int $id)
+    {
+        $group = SupportGroup::findOrFail($id);
+        $group->update(['is_active' => false]);
+        return response()->json(['message' => 'Group deactivated.']);
+    }
+
+    // ─── Moderation Queue ─────────────────────────────────────────────────────
+
+    public function flaggedMessages(Request $request)
+    {
+        $messages = GroupMessage::with(['group:id,name', 'user:id,display_name,username'])
+            ->where('is_moderated', false)
+            ->whereRaw("content REGEXP 'kill|suicide|overdose|end my life|hurt myself|self.harm|die|dead'")
+            ->orderByDesc('created_at')
+            ->paginate(30);
+
+        return response()->json($messages);
+    }
+
+    public function moderateMessage(int $groupId, int $msgId)
+    {
+        $msg = GroupMessage::where('id', $msgId)->where('group_id', $groupId)->firstOrFail();
+        $msg->update(['is_moderated' => true, 'moderated_at' => now()]);
+        return response()->json(['message' => 'Message hidden.']);
     }
 }

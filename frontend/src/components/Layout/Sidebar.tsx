@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, ClipboardList, Users, Calendar,
   Heart, TrendingUp, User, Leaf, ShieldCheck, Stethoscope,
-  DollarSign, Tag, BookOpen, MessageCircle, History, Clock
+  DollarSign, Tag, BookOpen, MessageCircle, History, Clock, BarChart2
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useT } from '../../contexts/I18nContext'
@@ -19,6 +19,7 @@ export default function Sidebar() {
     { to: '/professionals', icon: Users, label: t('findTherapist') },
     { to: '/consultations', icon: Calendar, label: t('mySessions') },
     { to: '/history', icon: History, label: t('sessionHistory') },
+    { to: '/progress', icon: BarChart2, label: 'My Progress' },
     { to: '/mood', icon: Heart, label: t('moodTracker') },
     { to: '/sobriety', icon: TrendingUp, label: t('sobriety') },
     { to: '/lessons', icon: BookOpen, label: t('recoveryLibrary') },

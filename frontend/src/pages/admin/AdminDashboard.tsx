@@ -5,8 +5,19 @@ import { useAuthStore } from '../../store/authStore'
 import { format } from 'date-fns'
 import {
   CheckCircle, XCircle, Clock, Users, Star,
-  ChevronDown, ChevronUp, BarChart2, DollarSign, AlertCircle, RotateCcw, Video
+  ChevronDown, ChevronUp, BarChart2, DollarSign, AlertCircle, RotateCcw, Video,
+  MessageSquare, Shield, Plus, Trash2, Edit3, Eye
 } from 'lucide-react'
+
+interface Group {
+  id: number; name: string; slug: string; description: string
+  category: string; icon: string; is_active: boolean; member_count: number
+}
+interface FlaggedMsg {
+  id: number; content: string; display_name: string; created_at: string
+  group: { id: number; name: string }
+  user: { id: number; display_name: string; username: string }
+}
 
 interface ProfRow {
   id: number
@@ -35,7 +46,7 @@ interface Stats {
 }
 
 type TabType = 'pending' | 'verified' | 'rejected'
-type MainTab = 'professionals' | 'sessions'
+type MainTab = 'professionals' | 'sessions' | 'groups' | 'moderation'
 
 const TAB_LABEL: Record<TabType, string> = {
   pending: 'Pending Review',
@@ -66,6 +77,11 @@ export default function AdminDashboard() {
   const [acting, setActing] = useState<number | null>(null)
   const [expanded, setExpanded] = useState<number | null>(null)
   const [confirmingId, setConfirmingId] = useState<number | null>(null)
+  const [groups, setGroups] = useState<Group[]>([])
+  const [flaggedMsgs, setFlaggedMsgs] = useState<FlaggedMsg[]>([])
+  const [newGroup, setNewGroup] = useState({ name: '', description: '', category: 'depression', icon: '💬', is_active: true })
+  const [showNewGroup, setShowNewGroup] = useState(false)
+  const [savingGroup, setSavingGroup] = useState(false)
 
   useEffect(() => {
     if (user?.role !== 'admin') { navigate('/dashboard'); return }
@@ -90,7 +106,35 @@ export default function AdminDashboard() {
         .catch(() => setConsultations([]))
         .finally(() => setLoading(false))
     }
+    if (mainTab === 'groups') {
+      api.get('/admin/groups').then(r => setGroups(r.data.groups ?? [])).catch(() => {})
+    }
+    if (mainTab === 'moderation') {
+      api.get('/admin/moderation/flagged').then(r => setFlaggedMsgs(r.data.data ?? r.data)).catch(() => {})
+    }
   }, [mainTab])
+
+  const createGroup = async () => {
+    if (!newGroup.name || !newGroup.description) return
+    setSavingGroup(true)
+    try {
+      const r = await api.post('/admin/groups', newGroup)
+      setGroups(prev => [...prev, r.data.group])
+      setNewGroup({ name: '', description: '', category: 'depression', icon: '💬', is_active: true })
+      setShowNewGroup(false)
+    } catch (e: any) { alert(e.response?.data?.error ?? 'Failed to create group') }
+    finally { setSavingGroup(false) }
+  }
+
+  const toggleGroup = async (g: Group) => {
+    await api.put(`/admin/groups/${g.id}`, { is_active: !g.is_active })
+    setGroups(prev => prev.map(x => x.id === g.id ? { ...x, is_active: !x.is_active } : x))
+  }
+
+  const hideMessage = async (groupId: number, msgId: number) => {
+    await api.put(`/admin/groups/${groupId}/moderate/${msgId}`)
+    setFlaggedMsgs(prev => prev.filter(m => m.id !== msgId))
+  }
 
   const handleConfirmPayment = async (id: number) => {
     setConfirmingId(id)
@@ -143,17 +187,24 @@ export default function AdminDashboard() {
       )}
 
       {/* Main tab switcher */}
-      <div className="flex gap-3 border-b border-gray-200">
-        {(['professionals', 'sessions'] as MainTab[]).map(t => (
+      <div className="flex flex-wrap gap-1 border-b border-gray-200">
+        {([
+          { key: 'professionals', icon: Users,        label: 'Applications' },
+          { key: 'sessions',      icon: Video,         label: 'Sessions' },
+          { key: 'groups',        icon: MessageSquare, label: 'Support Groups' },
+          { key: 'moderation',    icon: Shield,        label: 'Moderation' },
+        ] as { key: MainTab; icon: any; label: string }[]).map(({ key, icon: Icon, label }) => (
           <button
-            key={t}
-            onClick={() => setMainTab(t)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px capitalize transition-colors ${
-              mainTab === t ? 'border-primary-600 text-primary-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+            key={key}
+            onClick={() => setMainTab(key)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              mainTab === key ? 'border-primary-600 text-primary-700' : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            {t === 'professionals' ? <Users size={14} /> : <Video size={14} />}
-            {t === 'professionals' ? 'Professional Applications' : 'All Sessions'}
+            <Icon size={14} /> {label}
+            {key === 'moderation' && flaggedMsgs.length > 0 && (
+              <span className="bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold">{flaggedMsgs.length}</span>
+            )}
           </button>
         ))}
       </div>
@@ -355,6 +406,109 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>}
+
+      {/* ── SUPPORT GROUPS TAB ── */}
+      {mainTab === 'groups' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Support Groups</h2>
+            <button onClick={() => setShowNewGroup(!showNewGroup)} className="btn-primary flex items-center gap-2 text-sm py-2 px-4">
+              <Plus size={14} /> New Group
+            </button>
+          </div>
+
+          {showNewGroup && (
+            <div className="card border-2 border-teal-200 space-y-3">
+              <h3 className="font-semibold text-gray-800">Create New Group</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input value={newGroup.name} onChange={e => setNewGroup(g => ({ ...g, name: e.target.value }))}
+                  className="input-field" placeholder="Group name" />
+                <div className="flex gap-2">
+                  <input value={newGroup.icon} onChange={e => setNewGroup(g => ({ ...g, icon: e.target.value }))}
+                    className="input-field w-20" placeholder="Icon" />
+                  <select value={newGroup.category} onChange={e => setNewGroup(g => ({ ...g, category: e.target.value }))} className="input-field flex-1">
+                    {['depression','anxiety','addiction','gambling','tobacco','relationship','wellness'].map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <textarea value={newGroup.description} onChange={e => setNewGroup(g => ({ ...g, description: e.target.value }))}
+                className="input-field w-full h-20" placeholder="Description visible to patients…" />
+              <div className="flex gap-2">
+                <button onClick={createGroup} disabled={savingGroup} className="btn-primary text-sm px-4">
+                  {savingGroup ? 'Creating…' : 'Create Group'}
+                </button>
+                <button onClick={() => setShowNewGroup(false)} className="btn-secondary text-sm px-4">Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {groups.length === 0 ? (
+            <div className="card text-center py-10 text-gray-400">No groups yet. Create one above.</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {groups.map(g => (
+                <div key={g.id} className={`card flex items-start gap-3 ${!g.is_active ? 'opacity-50' : ''}`}>
+                  <div className="text-3xl flex-shrink-0">{g.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-gray-900 flex items-center gap-2">
+                      {g.name}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${g.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {g.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-400 mt-0.5 capitalize">{g.category} · {g.member_count} members</div>
+                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{g.description}</p>
+                  </div>
+                  <button onClick={() => toggleGroup(g)} title={g.is_active ? 'Deactivate' : 'Activate'}
+                    className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+                    <Eye size={16} className={g.is_active ? 'text-green-500' : ''} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── MODERATION TAB ── */}
+      {mainTab === 'moderation' && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <Shield size={18} className="text-red-500" /> Flagged Messages
+          </h2>
+          {flaggedMsgs.length === 0 ? (
+            <div className="card text-center py-10 text-gray-400">
+              <Shield size={36} className="mx-auto mb-2 text-gray-200" />
+              No flagged messages — all clear.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {flaggedMsgs.map(m => (
+                <div key={m.id} className="card border-l-4 border-red-400">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
+                        <span className="font-medium text-gray-700">{m.display_name}</span>
+                        in <span className="text-teal-600">{m.group?.name}</span>
+                        · {new Date(m.created_at).toLocaleString('en-KE')}
+                      </div>
+                      <p className="text-sm text-gray-800 bg-red-50 rounded p-2">{m.content}</p>
+                    </div>
+                    <button
+                      onClick={() => hideMessage(m.group.id, m.id)}
+                      className="flex items-center gap-1 text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-medium flex-shrink-0"
+                    >
+                      <Trash2 size={12} /> Hide
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

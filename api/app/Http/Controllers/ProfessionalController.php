@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Assessment;
 use App\Models\Professional;
 use App\Models\ProfessionalAvailability;
 use App\Models\Specialization;
@@ -37,9 +38,55 @@ class ProfessionalController extends Controller
 
         $professionals = $query->orderByDesc('rating')->paginate(20);
 
-        // Privacy: strip email/phone from user
-        $professionals->getCollection()->transform(function ($prof) {
-            return $this->safeProfessional($prof);
+        // Compute match scores if user is authenticated
+        $userConditions  = [];
+        $userLanguage    = null;
+        $authUser = auth('api')->user();
+        if ($authUser) {
+            $latest = Assessment::where('user_id', $authUser->id)
+                ->orderByDesc('created_at')
+                ->first();
+            if ($latest) {
+                $userConditions = [$latest->type]; // e.g. 'phq9', 'audit'
+            }
+            $userLanguage = $authUser->preferred_language ?? null;
+        }
+
+        $conditionSpecMap = [
+            'phq9'  => ['depression', 'mood'],
+            'gad7'  => ['anxiety', 'stress'],
+            'audit' => ['alcohol', 'addiction', 'substance'],
+            'dast10'=> ['substance', 'drug', 'addiction'],
+            'pgsi'  => ['gambling', 'addiction'],
+        ];
+
+        $professionals->getCollection()->transform(function ($prof) use ($userConditions, $userLanguage, $conditionSpecMap) {
+            $safe = $this->safeProfessional($prof);
+            // Match score: specialization 40 + language 20 + rating 25 + experience 15
+            $score = 0;
+            $profSpecs = array_map('strtolower', array_column($prof->specializations->toArray(), 'name'));
+            foreach ($userConditions as $cond) {
+                $keywords = $conditionSpecMap[$cond] ?? [];
+                foreach ($keywords as $kw) {
+                    foreach ($profSpecs as $spec) {
+                        if (str_contains($spec, $kw)) { $score += 40; break 2; }
+                    }
+                }
+            }
+            if ($userLanguage) {
+                $profLangs = array_map('strtolower', array_column($prof->languages->toArray(), 'name'));
+                foreach ($profLangs as $lang) {
+                    if (str_contains(strtolower($userLanguage), $lang) || str_contains($lang, strtolower($userLanguage))) {
+                        $score += 20; break;
+                    }
+                }
+            } else {
+                $score += 10; // neutral if no preference
+            }
+            $score += min(25, (float)($prof->rating ?? 0) / 5 * 25);
+            $score += min(15, (int)($prof->years_experience ?? 0) / 10 * 15);
+            $safe['match_score'] = (int) min(100, $score);
+            return $safe;
         });
 
         return response()->json($professionals);
