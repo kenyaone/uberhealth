@@ -200,6 +200,38 @@ class AdminController extends Controller
         return response()->json(['message' => 'Message hidden.']);
     }
 
+    // ─── User Management ─────────────────────────────────────────────────────
+
+    public function listUsers(Request $request)
+    {
+        $q = $request->query('q');
+        $users = \App\Models\User::when($q, fn($query) =>
+                $query->where('username', 'like', "%{$q}%")
+                      ->orWhere('display_name', 'like', "%{$q}%")
+                      ->orWhere('email', 'like', "%{$q}%")
+            )
+            ->select('id', 'username', 'display_name', 'email', 'role', 'is_banned', 'created_at')
+            ->orderByDesc('created_at')
+            ->paginate(30);
+
+        return response()->json($users);
+    }
+
+    public function banUser(int $id)
+    {
+        $user = \App\Models\User::findOrFail($id);
+        if ($user->role === 'admin') return response()->json(['error' => 'Cannot ban an admin.'], 403);
+        $user->update(['is_banned' => true]);
+        return response()->json(['message' => "User {$user->display_name} banned."]);
+    }
+
+    public function unbanUser(int $id)
+    {
+        $user = \App\Models\User::findOrFail($id);
+        $user->update(['is_banned' => false]);
+        return response()->json(['message' => "User {$user->display_name} unbanned."]);
+    }
+
     // ─── SHA Accreditation Report ─────────────────────────────────────────────
 
     public function shaReport(Request $request)

@@ -4,7 +4,7 @@ import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
 import type { Consultation } from '../../types'
 import { format } from 'date-fns'
-import { Video, Clock, CheckCircle, XCircle, AlertCircle, FileText, Calendar, PlayCircle } from 'lucide-react'
+import { Video, Clock, CheckCircle, XCircle, AlertCircle, FileText, Calendar, PlayCircle, RotateCcw, X, Loader2 } from 'lucide-react'
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   pending: { label: 'Awaiting Payment', color: 'text-yellow-700 bg-yellow-50', icon: Clock },
@@ -18,8 +18,11 @@ export default function MyConsultations() {
   const user = useAuthStore(s => s.user)
   const isProfessional = user?.role === 'professional'
   const [consultations, setConsultations] = useState<Consultation[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [loading, setLoading]         = useState(true)
+  const [error, setError]             = useState('')
+  const [rescheduling, setRescheduling] = useState<Consultation | null>(null)
+  const [newDate, setNewDate]         = useState('')
+  const [reschedSaving, setReschedSaving] = useState(false)
 
   useEffect(() => {
     const endpoint = isProfessional ? '/consultations/professional/list' : '/consultations'
@@ -32,6 +35,19 @@ export default function MyConsultations() {
       .finally(() => setLoading(false))
   }, [isProfessional])
 
+  const doReschedule = async () => {
+    if (!rescheduling || !newDate) return
+    setReschedSaving(true)
+    try {
+      await api.put(`/consultations/${rescheduling.id}/reschedule`, { scheduled_at: newDate })
+      setConsultations(prev => prev.map(c => c.id === rescheduling.id ? { ...c, scheduled_at: newDate } : c))
+      setRescheduling(null)
+      setNewDate('')
+    } catch (e: any) {
+      alert(e.response?.data?.error ?? 'Could not reschedule. Please contact support.')
+    } finally { setReschedSaving(false) }
+  }
+
   if (loading) return <div className="text-center py-10 text-gray-400">Loading sessions...</div>
 
   return (
@@ -40,6 +56,36 @@ export default function MyConsultations() {
         <h1 className="text-2xl font-bold text-gray-900">{isProfessional ? 'My Patient Sessions' : 'My Sessions'}</h1>
         {!isProfessional && <Link to="/professionals" className="btn-primary text-sm">Book New Session</Link>}
       </div>
+
+      {/* Reschedule modal */}
+      {rescheduling && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-gray-900">Reschedule Session</h2>
+              <button onClick={() => setRescheduling(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
+            <p className="text-sm text-gray-500">
+              Current: <span className="font-medium text-gray-800">{format(new Date(rescheduling.scheduled_at), 'EEE, MMM d · h:mm a')}</span>
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">New date &amp; time</label>
+              <input type="datetime-local" className="input-field" value={newDate}
+                min={new Date().toISOString().slice(0, 16)}
+                onChange={e => setNewDate(e.target.value)} />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={doReschedule} disabled={reschedSaving || !newDate}
+                className="btn-primary flex-1 flex items-center justify-center gap-2">
+                {reschedSaving && <Loader2 size={14} className="animate-spin" />}
+                Confirm
+              </button>
+              <button onClick={() => setRescheduling(null)} className="btn-secondary flex-1">Cancel</button>
+            </div>
+            <p className="text-xs text-gray-400 text-center">Rescheduling within 24 hrs of your session may incur a late fee per our cancellation policy.</p>
+          </div>
+        </div>
+      )}
 
       {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{error}</div>}
 
@@ -88,6 +134,12 @@ export default function MyConsultations() {
                 )}
 
                 <div className="flex flex-wrap gap-2 mt-4">
+                  {c.status === 'confirmed' && !isProfessional && new Date(c.scheduled_at) > new Date() && (
+                    <button onClick={() => { setRescheduling(c); setNewDate('') }}
+                      className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+                      <RotateCcw size={12} /> Reschedule
+                    </button>
+                  )}
                   {canJoin && (
                     <Link
                       to={`/session/${c.consultation_id}`}

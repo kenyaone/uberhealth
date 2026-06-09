@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import api from '../api/axios'
-import { Shield, Save, Zap, CheckCircle, Crown, Calendar, ArrowRight, RefreshCw } from 'lucide-react'
+import { Shield, Save, Zap, CheckCircle, Crown, Calendar, ArrowRight, RefreshCw, Camera, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
 
 interface ProfileForm {
   display_name: string
@@ -33,13 +33,23 @@ const TIER_BADGE: Record<string, string> = {
   pro:     'bg-purple-50 text-purple-800 border-purple-200',
 }
 
+interface PwForm { current_password: string; password: string; confirm: string }
+
 export default function Profile() {
   const { user, updateUser } = useAuthStore()
   const navigate = useNavigate()
-  const [saving, setSaving]     = useState(false)
-  const [saved, setSaved]       = useState(false)
-  const [subscription, setSub]  = useState<Subscription | null>(null)
-  const [subLoading, setSubLoad] = useState(true)
+  const [saving, setSaving]       = useState(false)
+  const [saved, setSaved]         = useState(false)
+  const [subscription, setSub]    = useState<Subscription | null>(null)
+  const [subLoading, setSubLoad]  = useState(true)
+  const [avatarLoading, setAvL]   = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>((user as any)?.avatar ?? null)
+  const fileRef                   = useRef<HTMLInputElement>(null)
+  const [showPw, setShowPw]       = useState(false)
+  const [pwSaving, setPwSaving]   = useState(false)
+  const [pwDone, setPwDone]       = useState(false)
+  const [pwError, setPwError]     = useState('')
+  const pwForm = useForm<PwForm>()
 
   const { register, handleSubmit } = useForm<ProfileForm>({
     defaultValues: {
@@ -55,6 +65,32 @@ export default function Profile() {
       .catch(() => {})
       .finally(() => setSubLoad(false))
   }, [])
+
+  const uploadAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvL(true)
+    const fd = new FormData()
+    fd.append('avatar', file)
+    try {
+      const r = await api.post('/auth/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      setAvatarUrl(r.data.avatar_url)
+      updateUser({ ...(user as any), avatar: r.data.avatar_url })
+    } catch {} finally { setAvL(false) }
+  }
+
+  const onChangePw = async (data: PwForm) => {
+    if (data.password !== data.confirm) { setPwError('Passwords do not match'); return }
+    setPwSaving(true); setPwError('')
+    try {
+      await api.post('/auth/change-password', { current_password: data.current_password, password: data.password })
+      setPwDone(true)
+      pwForm.reset()
+      setTimeout(() => setPwDone(false), 4000)
+    } catch (e: any) {
+      setPwError(e.response?.data?.error ?? 'Failed to change password.')
+    } finally { setPwSaving(false) }
+  }
 
   const onSubmit = async (data: ProfileForm) => {
     setSaving(true)
@@ -81,8 +117,18 @@ export default function Profile() {
       {/* ── Identity card ── */}
       <div className="card">
         <div className="flex items-center gap-4 mb-5">
-          <div className="w-16 h-16 rounded-2xl bg-primary-700 text-white flex items-center justify-center text-2xl font-bold">
-            {user?.display_name?.charAt(0).toUpperCase()}
+          <div className="relative group cursor-pointer" onClick={() => fileRef.current?.click()}>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="avatar" className="w-16 h-16 rounded-2xl object-cover border-2 border-primary-200" />
+            ) : (
+              <div className="w-16 h-16 rounded-2xl bg-primary-700 text-white flex items-center justify-center text-2xl font-bold">
+                {user?.display_name?.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="absolute inset-0 rounded-2xl bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              {avatarLoading ? <Loader2 size={18} className="text-white animate-spin" /> : <Camera size={18} className="text-white" />}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={uploadAvatar} />
           </div>
           <div>
             <div className="font-semibold text-gray-900 text-lg">{user?.display_name}</div>
@@ -268,6 +314,50 @@ export default function Profile() {
             <p className="text-xs text-center text-gray-400 mt-3">Pay via M-Pesa · Cancel anytime · No card needed</p>
           </div>
         )}
+      </div>
+
+      {/* ── Change Password ── */}
+      <div className="card">
+        <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Lock size={16} className="text-teal-600" /> Change Password
+        </h2>
+        {pwDone && (
+          <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700 mb-3 flex items-center gap-2">
+            <CheckCircle size={14} /> Password updated successfully.
+          </div>
+        )}
+        {pwError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700 mb-3">{pwError}</div>
+        )}
+        <form onSubmit={pwForm.handleSubmit(onChangePw)} className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Current password</label>
+            <div className="relative">
+              <input type={showPw ? 'text' : 'password'} className="input-field pr-10"
+                placeholder="••••••••"
+                {...pwForm.register('current_password', { required: true })} />
+              <button type="button" onClick={() => setShowPw(s => !s)} className="absolute right-3 top-2.5 text-gray-400">
+                {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
+            <input type={showPw ? 'text' : 'password'} className="input-field"
+              placeholder="Minimum 6 characters"
+              {...pwForm.register('password', { required: true, minLength: 6 })} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm new password</label>
+            <input type={showPw ? 'text' : 'password'} className="input-field"
+              placeholder="Repeat new password"
+              {...pwForm.register('confirm', { required: true })} />
+          </div>
+          <button type="submit" disabled={pwSaving} className="btn-primary w-full flex items-center justify-center gap-2">
+            {pwSaving && <Loader2 size={14} className="animate-spin" />}
+            Update Password
+          </button>
+        </form>
       </div>
 
       {/* ── Account Security ── */}

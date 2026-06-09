@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
@@ -130,5 +133,125 @@ class AuthController extends Controller
         } catch (JWTException $e) {
             return response()->json(['error' => 'Could not refresh token'], 401);
         }
+    }
+
+    // ─── Forgot Password ──────────────────────────────────────────────────────
+
+    public function forgotPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        $user = User::where('email', $request->email)->first();
+
+        // Always return success to prevent email enumeration
+        if (!$user) {
+            return response()->json(['message' => 'If that email exists, a reset link has been sent.']);
+        }
+
+        $token = Str::random(64);
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            ['token' => Hash::make($token), 'created_at' => now()]
+        );
+
+        $resetUrl = "https://mhapke.com/reset-password?token={$token}&email=" . urlencode($user->email);
+
+        try {
+            Mail::raw(
+                "Hi {$user->display_name},\n\n"
+                . "You requested a password reset for your Afya Yako Siri Yako account.\n\n"
+                . "Click this link to reset your password (expires in 60 minutes):\n\n"
+                . "{$resetUrl}\n\n"
+                . "If you did not request this, ignore this email — your password will not change.\n\n"
+                . "— Afya Yako Siri Yako",
+                fn($m) => $m->to($user->email)->subject('Reset your password — Afya Yako Siri Yako')
+            );
+        } catch (\Exception $e) {}
+
+        return response()->json(['message' => 'If that email exists, a reset link has been sent.']);
+    }
+
+    // ─── Reset Password ───────────────────────────────────────────────────────
+
+    public function resetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email'    => 'required|email',
+            'token'    => 'required|string',
+            'password' => 'required|string|min:6',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        $record = DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->first();
+
+        if (!$record || !Hash::check($request->token, $record->token)) {
+            return response()->json(['error' => 'Invalid or expired reset link.'], 422);
+        }
+
+        if (now()->diffInMinutes($record->created_at) > 60) {
+            DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+            return response()->json(['error' => 'Reset link has expired. Please request a new one.'], 422);
+        }
+
+        $user = User::where('email', $request->email)->firstOrFail();
+        $user->update(['password' => $request->password]);
+
+        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        return response()->json(['message' => 'Password reset successfully. You can now log in.']);
+    }
+
+    // ─── Change Password (authenticated) ─────────────────────────────────────
+
+    public function changePassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'new_password'     => 'required|string|min:6',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        $user = auth('api')->user();
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json(['error' => 'Current password is incorrect.'], 422);
+        }
+
+        $user->update(['password' => $request->new_password]);
+
+        return response()->json(['message' => 'Password changed successfully.']);
+    }
+
+    // ─── Avatar Upload ────────────────────────────────────────────────────────
+
+    public function uploadAvatar(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        $user = auth('api')->user();
+        $file = $request->file('avatar');
+        $name = 'avatars/' . $user->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+        $file->move(public_path('uploads'), $name);
+        $url = 'https://api.uberhealth.co.ke/uploads/' . $name;
+
+        $user->update(['avatar' => $url]);
+
+        return response()->json(['message' => 'Avatar updated.', 'avatar' => $url, 'user' => $user->fresh()]);
     }
 }

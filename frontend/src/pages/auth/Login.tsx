@@ -85,12 +85,17 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
-          No account?{' '}
-          <Link to="/signup" className="text-primary-700 font-medium hover:underline">
-            Sign up free — no real name needed
-          </Link>
-        </p>
+        <div className="mt-4 text-center space-y-2">
+          <p className="text-sm">
+            <Link to="/forgot-password" className="text-teal-600 hover:underline text-sm">Forgot password?</Link>
+          </p>
+          <p className="text-sm text-gray-500">
+            No account?{' '}
+            <Link to="/signup" className="text-primary-700 font-medium hover:underline">
+              Sign up free — no real name needed
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   )

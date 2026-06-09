@@ -315,4 +315,15 @@ class PaymentController extends Controller
             'status'          => $claim->status,
         ]);
     }
+
+    // Patient views their own insurance claims
+    public function myClaims()
+    {
+        $user   = auth('api')->user();
+        $claims = InsuranceClaim::where('user_id', $user->id)
+            ->with('consultation:id,consultation_id,scheduled_at')
+            ->orderByDesc('created_at')
+            ->get();
+        return response()->json(['claims' => $claims]);
+    }
 }

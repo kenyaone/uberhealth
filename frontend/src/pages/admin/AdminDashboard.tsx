@@ -46,7 +46,17 @@ interface Stats {
 }
 
 type TabType = 'pending' | 'verified' | 'rejected'
-type MainTab = 'professionals' | 'sessions' | 'groups' | 'moderation'
+type MainTab = 'professionals' | 'sessions' | 'groups' | 'moderation' | 'users'
+
+interface UserRow {
+  id: number
+  username: string
+  display_name: string
+  email: string
+  role: string
+  is_banned: boolean
+  created_at: string
+}
 
 const TAB_LABEL: Record<TabType, string> = {
   pending: 'Pending Review',
@@ -77,8 +87,12 @@ export default function AdminDashboard() {
   const [acting, setActing] = useState<number | null>(null)
   const [expanded, setExpanded] = useState<number | null>(null)
   const [confirmingId, setConfirmingId] = useState<number | null>(null)
-  const [groups, setGroups] = useState<Group[]>([])
+  const [groups, setGroups]         = useState<Group[]>([])
   const [flaggedMsgs, setFlaggedMsgs] = useState<FlaggedMsg[]>([])
+  const [usersList, setUsersList]   = useState<UserRow[]>([])
+  const [usersSearch, setUsersSearch] = useState('')
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [banningId, setBanningId]   = useState<number | null>(null)
   const [newGroup, setNewGroup] = useState({ name: '', description: '', category: 'depression', icon: '💬', is_active: true })
   const [showNewGroup, setShowNewGroup] = useState(false)
   const [savingGroup, setSavingGroup] = useState(false)
@@ -112,6 +126,10 @@ export default function AdminDashboard() {
     if (mainTab === 'moderation') {
       api.get('/admin/moderation/flagged').then(r => setFlaggedMsgs(r.data.data ?? r.data)).catch(() => {})
     }
+    if (mainTab === 'users') {
+      setUsersLoading(true)
+      api.get('/admin/users').then(r => setUsersList(r.data.users ?? [])).catch(() => {}).finally(() => setUsersLoading(false))
+    }
   }, [mainTab])
 
   const createGroup = async () => {
@@ -129,6 +147,25 @@ export default function AdminDashboard() {
   const toggleGroup = async (g: Group) => {
     await api.put(`/admin/groups/${g.id}`, { is_active: !g.is_active })
     setGroups(prev => prev.map(x => x.id === g.id ? { ...x, is_active: !x.is_active } : x))
+  }
+
+  const searchUsers = async () => {
+    setUsersLoading(true)
+    api.get(`/admin/users${usersSearch ? `?search=${encodeURIComponent(usersSearch)}` : ''}`)
+      .then(r => setUsersList(r.data.users ?? []))
+      .catch(() => {})
+      .finally(() => setUsersLoading(false))
+  }
+
+  const toggleBan = async (u: UserRow) => {
+    setBanningId(u.id)
+    try {
+      const action = u.is_banned ? 'unban' : 'ban'
+      await api.put(`/admin/users/${u.id}/${action}`)
+      setUsersList(prev => prev.map(x => x.id === u.id ? { ...x, is_banned: !x.is_banned } : x))
+    } catch (e: any) {
+      alert(e.response?.data?.error ?? 'Failed to update user.')
+    } finally { setBanningId(null) }
   }
 
   const hideMessage = async (groupId: number, msgId: number) => {
@@ -206,6 +243,7 @@ export default function AdminDashboard() {
           { key: 'sessions',      icon: Video,         label: 'Sessions' },
           { key: 'groups',        icon: MessageSquare, label: 'Support Groups' },
           { key: 'moderation',    icon: Shield,        label: 'Moderation' },
+          { key: 'users',         icon: Eye,           label: 'Users' },
         ] as { key: MainTab; icon: any; label: string }[]).map(({ key, icon: Icon, label }) => (
           <button
             key={key}
@@ -478,6 +516,52 @@ export default function AdminDashboard() {
                     className="text-gray-400 hover:text-gray-600 flex-shrink-0">
                     <Eye size={16} className={g.is_active ? 'text-green-500' : ''} />
                   </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── USERS TAB ── */}
+      {mainTab === 'users' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <input value={usersSearch} onChange={e => setUsersSearch(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && searchUsers()}
+              className="input-field flex-1" placeholder="Search by username, display name, or email…" />
+            <button onClick={searchUsers} className="btn-primary text-sm px-4 py-2">Search</button>
+          </div>
+          {usersLoading ? (
+            <div className="text-center py-10 text-gray-400">Loading…</div>
+          ) : usersList.length === 0 ? (
+            <div className="card text-center py-10 text-gray-400">No users found.</div>
+          ) : (
+            <div className="space-y-2">
+              {usersList.map(u => (
+                <div key={u.id} className={`card flex items-center justify-between gap-3 py-3 ${u.is_banned ? 'opacity-60' : ''}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-gray-900 text-sm">{u.display_name}</span>
+                      <span className="text-xs text-gray-400">@{u.username}</span>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded capitalize">{u.role}</span>
+                      {u.is_banned && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">Banned</span>}
+                    </div>
+                    {u.email && <div className="text-xs text-gray-400 mt-0.5">{u.email}</div>}
+                    <div className="text-xs text-gray-400">
+                      Joined {new Date(u.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </div>
+                  </div>
+                  {u.role !== 'admin' && (
+                    <button onClick={() => toggleBan(u)} disabled={banningId === u.id}
+                      className={`text-xs px-3 py-1.5 rounded-lg font-medium border flex items-center gap-1 disabled:opacity-50 ${
+                        u.is_banned
+                          ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100'
+                          : 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100'
+                      }`}>
+                      {banningId === u.id ? '…' : u.is_banned ? 'Unban' : 'Ban'}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

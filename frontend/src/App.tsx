@@ -47,6 +47,10 @@ import FAQ from './pages/legal/FAQ'
 import TermsOfService from './pages/legal/TermsOfService'
 import PrivacyPolicy from './pages/legal/PrivacyPolicy'
 import RefundPolicy from './pages/legal/RefundPolicy'
+import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
+import PeerMentors from './pages/community/PeerMentors'
+import MyClaims from './pages/consultation/MyClaims'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -71,6 +75,8 @@ export default function App() {
         <Route path="/refund-policy" element={<RefundPolicy />} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
@@ -110,6 +116,8 @@ export default function App() {
           <Route path="/templates" element={<SessionTemplates />} />
           <Route path="/certificate" element={<ProgressCertificate />} />
           <Route path="/eap-dashboard" element={<EAPDashboard />} />
+          <Route path="/peer-mentors" element={<PeerMentors />} />
+          <Route path="/my-claims" element={<MyClaims />} />
         </Route>
       </Routes>
     </BrowserRouter>

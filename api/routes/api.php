@@ -9,6 +9,7 @@ use App\Http\Controllers\PromoCodeController;
 use App\Http\Controllers\SafetyPlanController;
 use App\Http\Controllers\WaitlistController;
 use App\Http\Controllers\JournalController;
+use App\Http\Controllers\PeerMentorController;
 use App\Http\Controllers\SessionTemplateController;
 use App\Http\Controllers\AiController;
 use App\Http\Controllers\AssessmentController;
@@ -37,6 +38,8 @@ use Illuminate\Support\Facades\Route;
 Route::post('/auth/signup', [AuthController::class, 'signup']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/refresh', [AuthController::class, 'refresh']);
+Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 
 Route::get('/crisis/hotlines', [CrisisController::class, 'hotlines']);
 
@@ -76,6 +79,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::put('/auth/me', [AuthController::class, 'updateProfile']);
+    Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
+    Route::post('/auth/avatar', [AuthController::class, 'uploadAvatar']);
 
     // Assessments
     Route::get('/assessments', [AssessmentController::class, 'index']);
@@ -101,6 +106,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/consultations/{id}/recording/share', [ConsultationController::class, 'shareRecording']);
     Route::post('/consultations/{id}/notes-request', [ConsultationController::class, 'requestNotes']);
     Route::post('/consultations/{id}/follow-up', [ConsultationController::class, 'bookFollowUp']);
+    Route::put('/consultations/{id}/reschedule', [ConsultationController::class, 'reschedule']);
 
     // PHR — Mood
     Route::get('/phr/mood/stats', [PHRController::class, 'moodStats']);
@@ -190,6 +196,16 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/promo/redeem', [PromoCodeController::class, 'redeem']);
     Route::get('/promo/my-referral', [PromoCodeController::class, 'myReferralCode']);
 
+    // Peer mentors
+    Route::get('/peer-mentors', [PeerMentorController::class, 'index']);
+    Route::get('/peer-mentors/me', [PeerMentorController::class, 'myProfile']);
+    Route::post('/peer-mentors/apply', [PeerMentorController::class, 'apply']);
+    Route::post('/peer-mentors/withdraw', [PeerMentorController::class, 'withdraw']);
+    Route::post('/peer-mentors/{id}/connect', [PeerMentorController::class, 'connect']);
+
+    // Insurance claims (patient view)
+    Route::get('/my-claims', [PaymentController::class, 'myClaims']);
+
     // Private journal
     Route::get('/journal', [JournalController::class, 'index']);
     Route::post('/journal', [JournalController::class, 'store']);
@@ -259,5 +275,9 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/promo-codes', [PromoCodeController::class, 'adminCreate']);
         // SHA accreditation report
         Route::get('/sha-report', [AdminController::class, 'shaReport']);
+        // User management
+        Route::get('/users', [AdminController::class, 'listUsers']);
+        Route::put('/users/{id}/ban', [AdminController::class, 'banUser']);
+        Route::put('/users/{id}/unban', [AdminController::class, 'unbanUser']);
     });
 });

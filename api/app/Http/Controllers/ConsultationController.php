@@ -354,9 +354,49 @@ class ConsultationController extends Controller
             return response()->json(['error' => 'Cannot cancel a ' . $consultation->status . ' consultation'], 422);
         }
 
-        $consultation->update(['status' => 'cancelled']);
+        $isLate = $consultation->scheduled_at && now()->diffInHours($consultation->scheduled_at, false) < 24
+                  && now()->lt($consultation->scheduled_at);
 
-        return response()->json(['message' => 'Consultation cancelled', 'consultation' => $consultation]);
+        $consultation->update([
+            'status'            => 'cancelled',
+            'late_cancellation' => $isLate,
+        ]);
+
+        return response()->json([
+            'message'          => 'Consultation cancelled',
+            'late_cancellation'=> $isLate,
+            'consultation'     => $consultation,
+        ]);
+    }
+
+    // ─── Reschedule ───────────────────────────────────────────────────────────
+
+    public function reschedule($id, Request $request)
+    {
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'scheduled_at' => 'required|date|after:now',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        $user = auth('api')->user();
+        $consultation = Consultation::where('id', $id)
+            ->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('professional', fn($q2) => $q2->where('user_id', $user->id));
+            })->first();
+
+        if (!$consultation) {
+            return response()->json(['error' => 'Consultation not found'], 404);
+        }
+        if (!in_array($consultation->status, ['pending', 'confirmed'])) {
+            return response()->json(['error' => 'Cannot reschedule a ' . $consultation->status . ' session'], 422);
+        }
+
+        $consultation->update(['scheduled_at' => $request->scheduled_at]);
+
+        return response()->json(['message' => 'Session rescheduled.', 'consultation' => $consultation]);
     }
 
     // ─── Rate ─────────────────────────────────────────────────────────────────

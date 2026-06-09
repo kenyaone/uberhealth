@@ -3,7 +3,8 @@ import {
   LayoutDashboard, ClipboardList, Users, Calendar,
   Heart, TrendingUp, User, Leaf, ShieldCheck, Stethoscope,
   DollarSign, Tag, BookOpen, MessageCircle, History, Clock, BarChart2,
-  Shield, Target, Pill, Wind, Gift, BookMarked, Award, FileText, Building2
+  Shield, Target, Pill, Wind, Gift, BookMarked, Award, FileText, Building2,
+  HandHeart, CreditCard
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useT } from '../../contexts/I18nContext'
@@ -32,6 +33,8 @@ export default function Sidebar() {
     { to: '/journal', icon: BookMarked, label: 'My Journal' },
     { to: '/certificate', icon: Award, label: 'Certificate' },
     { to: '/referral', icon: Gift, label: 'Referral & Promo' },
+    { to: '/peer-mentors', icon: HandHeart, label: 'Peer Mentors' },
+    { to: '/my-claims', icon: CreditCard, label: 'Insurance Claims' },
     { to: '/profile', icon: User, label: t('profile') },
   ]
 
