@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Consultation;
+use App\Models\InsuranceClaim;
 use App\Models\Payment;
 use App\Models\Professional;
 use App\Models\ProfessionalPayout;
@@ -253,5 +254,65 @@ class PaymentController extends Controller
     {
         Log::warning('M-Pesa B2C Timeout', $request->all());
         return response()->json(['ResultCode' => 0, 'ResultDesc' => 'Accepted']);
+    }
+
+    public function insuranceClaim(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'consultation_id' => 'required|string|exists:consultations,consultation_id',
+            'provider'        => 'required|string|max:100',
+            'member_number'   => 'required|string|max:100',
+            'id_number'       => 'required|string|max:50',
+            'scheme_name'     => 'nullable|string|max:100',
+            'claim_reference' => 'required|string|max:50',
+            'amount'          => 'required|numeric|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        $user = auth('api')->user();
+        $consultation = Consultation::where('consultation_id', $request->consultation_id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$consultation) {
+            return response()->json(['error' => 'Consultation not found'], 404);
+        }
+
+        if (!in_array($consultation->status, ['pending', 'confirmed'])) {
+            return response()->json(['error' => 'Consultation already cancelled or completed'], 422);
+        }
+
+        // Confirm the consultation so the patient can join
+        $consultation->update(['status' => 'confirmed']);
+
+        $claim = InsuranceClaim::create([
+            'consultation_id' => $consultation->id,
+            'user_id'         => $user->id,
+            'claim_reference' => $request->claim_reference,
+            'provider'        => $request->provider,
+            'member_number'   => $request->member_number,
+            'id_number'       => $request->id_number,
+            'scheme_name'     => $request->scheme_name,
+            'amount'          => $request->amount,
+            'status'          => 'pending',
+        ]);
+
+        Log::info('Insurance claim created', [
+            'claim_reference'   => $claim->claim_reference,
+            'consultation_id'   => $consultation->consultation_id,
+            'provider'          => $claim->provider,
+            'user_id'           => $user->id,
+        ]);
+
+        return response()->json([
+            'message'         => 'Insurance claim submitted. Session is confirmed.',
+            'claim_reference' => $claim->claim_reference,
+            'consultation_id' => $consultation->consultation_id,
+            'amount'          => $claim->amount,
+            'status'          => $claim->status,
+        ]);
     }
 }

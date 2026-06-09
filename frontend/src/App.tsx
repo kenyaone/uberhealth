@@ -29,6 +29,10 @@ import SupportGroups from './pages/groups/SupportGroups'
 import GroupChat from './pages/groups/GroupChat'
 import FollowUpSurvey from './pages/surveys/FollowUpSurvey'
 import AvailabilityManager from './pages/professional/AvailabilityManager'
+import FAQ from './pages/legal/FAQ'
+import TermsOfService from './pages/legal/TermsOfService'
+import PrivacyPolicy from './pages/legal/PrivacyPolicy'
+import RefundPolicy from './pages/legal/RefundPolicy'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -46,6 +50,10 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/faq" element={<FAQ />} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/refund-policy" element={<RefundPolicy />} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
 

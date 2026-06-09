@@ -104,6 +104,9 @@ export default function JoinSession() {
     const name = encodeURIComponent(user?.display_name ?? 'User')
     const config = [
       `userInfo.displayName="${name}"`,
+      'config.lobby.enabled=false',          // prevents "conference has not started" waiting room
+      'config.prejoinPageEnabled=false',     // skip the Jitsi pre-join screen
+      'config.disableInviteFunctions=true',  // hide share-invite controls inside Jitsi
       videoMode === 'audio' ? 'config.startAudioOnly=true' : '',
       cameraOff && videoMode === 'video' ? 'config.startWithVideoMuted=true' : '',
     ].filter(Boolean).join('&')

@@ -219,6 +219,20 @@ class PHRController extends Controller
         return response()->json(['tracker' => $tracker], 201);
     }
 
+    public function sobrietyRefresh($id)
+    {
+        $user = auth('api')->user();
+        $tracker = SobrietyTracker::where('id', $id)->where('user_id', $user->id)->first();
+        if (!$tracker) return response()->json(['error' => 'Not found'], 404);
+
+        $streak = max(0, now()->diffInDays($tracker->start_date));
+        $tracker->update([
+            'current_streak' => $streak,
+            'longest_streak' => max($tracker->longest_streak, $streak),
+        ]);
+        return response()->json(['tracker' => $tracker->fresh()]);
+    }
+
     public function sobrietyRelapse($id)
     {
         $user = auth('api')->user();

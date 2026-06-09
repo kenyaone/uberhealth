@@ -106,9 +106,11 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/phr/sobriety', [PHRController::class, 'sobrietyIndex']);
     Route::post('/phr/sobriety', [PHRController::class, 'sobrietyStore']);
     Route::post('/phr/sobriety/{id}/relapse', [PHRController::class, 'sobrietyRelapse']);
+    Route::post('/phr/sobriety/{id}/refresh', [PHRController::class, 'sobrietyRefresh']);
 
     // Payments (authenticated initiation)
     Route::post('/payments/initiate', [PaymentController::class, 'initiate']);
+    Route::post('/payments/insurance-claim', [PaymentController::class, 'insuranceClaim']);
     Route::post('/payments/subscription/initiate', [PaymentController::class, 'subscriptionInitiate']);
 
     // Crisis

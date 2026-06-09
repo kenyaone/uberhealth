@@ -3,9 +3,10 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import api from '../../api/axios'
 import type { Professional } from '../../types'
-import { Shield, Phone, CheckCircle, Loader2, Clock, Video } from 'lucide-react'
+import { Shield, Phone, CheckCircle, Loader2, Clock, Video, CreditCard, Heart } from 'lucide-react'
 
-type Step = 'details' | 'paying' | 'polling' | 'success' | 'failed' | 'payment_retry'
+type Step = 'details' | 'paying' | 'polling' | 'success' | 'failed' | 'payment_retry' | 'insurance_success'
+type PayMethod = 'mpesa' | 'insurance'
 
 interface BookForm {
   scheduled_at: string
@@ -14,6 +15,26 @@ interface BookForm {
   share_mood_logs: boolean
   phone: string
 }
+
+interface InsuranceForm {
+  provider: string
+  member_number: string
+  id_number: string
+  scheme_name: string
+}
+
+const INSURANCE_PROVIDERS = [
+  'SHA (Social Health Authority)',
+  'AAR Insurance',
+  'Jubilee Health Insurance',
+  'Madison Insurance',
+  'CIC Insurance',
+  'Britam Health',
+  'Resolution Insurance',
+  'GA Insurance',
+  'Old Mutual',
+  'Other',
+]
 
 export default function BookConsultation() {
   const { professionalId } = useParams()
@@ -27,6 +48,8 @@ export default function BookConsultation() {
   const [amount, setAmount] = useState(0)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [payMethod, setPayMethod] = useState<PayMethod>('mpesa')
+  const [claimRef, setClaimRef] = useState('')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollCount = useRef(0)
 
@@ -35,6 +58,9 @@ export default function BookConsultation() {
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<BookForm>({
     defaultValues: { duration_minutes: 60, share_assessments: false, share_mood_logs: false }
+  })
+  const { register: regIns, handleSubmit: handleIns, formState: { errors: insErrors } } = useForm<InsuranceForm>({
+    defaultValues: { provider: 'SHA (Social Health Authority)' }
   })
   const duration = watch('duration_minutes')
 
@@ -45,46 +71,78 @@ export default function BookConsultation() {
 
   const computedAmount = pro ? Number(pro.rate_per_hour) * (Number(duration) / 60) : 0
 
-  const onSubmit = async (data: BookForm) => {
+  // Create the booking record first (shared between mpesa + insurance paths)
+  const createBooking = async (data: BookForm) => {
+    const endpoint = followUpState?.is_follow_up && followUpState?.parent_id
+      ? `/consultations/${followUpState.parent_id}/follow-up`
+      : '/consultations'
+    const bookRes = await api.post(endpoint, {
+      professional_id: Number(professionalId),
+      scheduled_at: data.scheduled_at,
+      duration_minutes: Number(data.duration_minutes),
+      share_assessments: data.share_assessments,
+      share_mood_logs: data.share_mood_logs,
+    })
+    return bookRes.data.consultation
+  }
+
+  const onSubmitMpesa = async (data: BookForm) => {
     setLoading(true)
     setError('')
     try {
-      // Step 1: Create consultation (or follow-up)
-      const endpoint = followUpState?.is_follow_up && followUpState?.parent_id
-        ? `/consultations/${followUpState.parent_id}/follow-up`
-        : '/consultations'
-
-      const bookRes = await api.post(endpoint, {
-        professional_id: Number(professionalId),
-        scheduled_at: data.scheduled_at,
-        duration_minutes: Number(data.duration_minutes),
-        share_assessments: data.share_assessments,
-        share_mood_logs: data.share_mood_logs,
-      })
-      const c = bookRes.data.consultation
+      const c = await createBooking(data)
       setConsultationId(c.consultation_id)
       setNumericId(c.id)
       setAmount(c.amount)
       setStep('paying')
-
-      // Step 2: Initiate M-Pesa STK Push
       try {
-        await api.post('/payments/initiate', {
-          consultation_id: c.consultation_id,
-          phone: data.phone,
-        })
+        await api.post('/payments/initiate', { consultation_id: c.consultation_id, phone: data.phone })
         setStep('polling')
         startPolling(c.id)
       } catch (payErr: any) {
-        // Booking exists but payment failed — go to retry screen (not back to start)
-        const msg = payErr.response?.data?.error || 'M-Pesa prompt could not be sent.'
-        setError(msg)
+        setError(payErr.response?.data?.error || 'M-Pesa prompt could not be sent.')
         setStep('payment_retry')
       }
     } catch (err: any) {
-      const msg = err.response?.data?.error || 'Booking failed. Please try again.'
-      setError(msg)
+      setError(err.response?.data?.error || 'Booking failed. Please try again.')
       setStep('details')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // We need session details for insurance submission — store them temporarily
+  const [pendingBookData, setPendingBookData] = useState<BookForm | null>(null)
+
+  const onSessionDetailsForInsurance = (data: BookForm) => {
+    setPendingBookData(data)
+  }
+
+  const onSubmitInsurance = async (ins: InsuranceForm) => {
+    if (!pendingBookData) return
+    setLoading(true)
+    setError('')
+    try {
+      const c = await createBooking(pendingBookData)
+      setConsultationId(c.consultation_id)
+      setNumericId(c.id)
+      setAmount(c.amount)
+
+      // Submit insurance claim record
+      const ref = `CLM-${c.consultation_id}-${Date.now().toString(36).toUpperCase()}`
+      await api.post('/payments/insurance-claim', {
+        consultation_id: c.consultation_id,
+        provider: ins.provider,
+        member_number: ins.member_number,
+        id_number: ins.id_number,
+        scheme_name: ins.scheme_name,
+        claim_reference: ref,
+        amount: c.amount,
+      })
+      setClaimRef(ref)
+      setStep('insurance_success')
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Booking failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -94,21 +152,12 @@ export default function BookConsultation() {
     pollCount.current = 0
     pollRef.current = setInterval(async () => {
       pollCount.current += 1
-      if (pollCount.current > 20) {
-        clearInterval(pollRef.current!)
-        setStep('failed')
-        return
-      }
+      if (pollCount.current > 20) { clearInterval(pollRef.current!); setStep('failed'); return }
       try {
         const r = await api.get(`/consultations/${id}`)
         const status = r.data.consultation?.status ?? r.data.status
-        if (status === 'confirmed') {
-          clearInterval(pollRef.current!)
-          setStep('success')
-        } else if (status === 'cancelled') {
-          clearInterval(pollRef.current!)
-          setStep('failed')
-        }
+        if (status === 'confirmed') { clearInterval(pollRef.current!); setStep('success') }
+        else if (status === 'cancelled') { clearInterval(pollRef.current!); setStep('failed') }
       } catch {}
     }, 4000)
   }
@@ -142,26 +191,15 @@ export default function BookConsultation() {
         {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">M-Pesa Phone Number</label>
-          <input
-            value={retryPhone}
-            onChange={e => setRetryPhone(e.target.value)}
-            className="input-field"
-            placeholder="0712345678"
-          />
+          <input value={retryPhone} onChange={e => setRetryPhone(e.target.value)} className="input-field" placeholder="0712345678" />
         </div>
         <div className="bg-gray-50 rounded-lg p-3 text-sm flex justify-between font-bold text-gray-900">
           <span>Total</span><span>KES {amount.toLocaleString()}</span>
         </div>
-        <button
-          onClick={retryPayment}
-          disabled={!retryPhone || retryLoading}
-          className="btn-primary w-full py-3 text-base"
-        >
+        <button onClick={retryPayment} disabled={!retryPhone || retryLoading} className="btn-primary w-full py-3">
           {retryLoading ? <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" />Sending…</span> : 'Send M-Pesa Prompt'}
         </button>
-        <button onClick={() => navigate('/consultations')} className="btn-secondary w-full text-sm">
-          View My Sessions
-        </button>
+        <button onClick={() => navigate('/consultations')} className="btn-secondary w-full text-sm">View My Sessions</button>
       </div>
     )
   }
@@ -200,6 +238,36 @@ export default function BookConsultation() {
     )
   }
 
+  if (step === 'insurance_success') {
+    return (
+      <div className="max-w-lg mx-auto mt-16 card text-center py-10">
+        <CheckCircle size={56} className="text-green-500 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Session Booked!</h2>
+        <p className="text-gray-600 mb-1">Your session has been reserved and an insurance claim has been raised.</p>
+        <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 my-5 text-left text-sm">
+          <div className="font-semibold text-teal-900 mb-2 flex items-center gap-2">
+            <Heart size={14} className="text-teal-600" /> Insurance Claim Details
+          </div>
+          <div className="space-y-1.5 text-teal-800">
+            <div className="flex justify-between"><span>Claim Reference</span><strong>{claimRef}</strong></div>
+            <div className="flex justify-between"><span>Session ID</span><strong>{consultationId}</strong></div>
+            <div className="flex justify-between"><span>Amount</span><strong>KES {amount.toLocaleString()}</strong></div>
+          </div>
+          <p className="text-teal-700 text-xs mt-3">
+            Save this claim reference. We will submit it to your insurer on your behalf. If your plan requires co-payment or direct submission, we will send a clinical receipt to your registered email.
+          </p>
+        </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 mb-5">
+          Your session is <strong>pending insurer confirmation</strong>. If the claim is not approved within 48 hours, you will be notified to complete payment via M-Pesa.
+        </div>
+        <div className="flex gap-3">
+          <button onClick={() => navigate('/consultations')} className="btn-primary flex-1">View My Sessions</button>
+          <button onClick={() => navigate('/dashboard')} className="btn-secondary flex-1">Dashboard</button>
+        </div>
+      </div>
+    )
+  }
+
   if (step === 'failed') {
     return (
       <div className="max-w-lg mx-auto mt-16 card text-center py-10">
@@ -214,6 +282,7 @@ export default function BookConsultation() {
     )
   }
 
+  // ── Main booking form ──────────────────────────────────────────────────────
   return (
     <div className="max-w-2xl mx-auto space-y-5">
       <h1 className="text-2xl font-bold text-gray-900">
@@ -240,91 +309,257 @@ export default function BookConsultation() {
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>
-      )}
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        {/* Session details */}
-        <div className="card space-y-4">
-          <h2 className="font-semibold text-gray-900">Session Details</h2>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
-            <input
-              {...register('scheduled_at', { required: 'Please select a date and time' })}
-              type="datetime-local"
-              min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
-              className="input-field"
-            />
-            {errors.scheduled_at && <p className="text-red-500 text-xs mt-1">{errors.scheduled_at.message}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
-            <select {...register('duration_minutes', { valueAsNumber: true })} className="input-field">
-              <option value={30}>30 minutes — KES {Math.round(Number(pro.rate_per_hour) * 0.5).toLocaleString()}</option>
-              <option value={60}>60 minutes — KES {Number(pro.rate_per_hour).toLocaleString()} (recommended)</option>
-              <option value={90}>90 minutes — KES {Math.round(Number(pro.rate_per_hour) * 1.5).toLocaleString()}</option>
-            </select>
-          </div>
+      {/* ── PAYMENT METHOD SELECTOR ── */}
+      <div className="card">
+        <h2 className="font-semibold text-gray-900 mb-3">How will you pay?</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setPayMethod('mpesa')}
+            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+              payMethod === 'mpesa'
+                ? 'border-teal-500 bg-teal-50'
+                : 'border-gray-200 bg-white hover:border-gray-300'
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${payMethod === 'mpesa' ? 'bg-teal-600' : 'bg-gray-100'}`}>
+              <Phone size={16} className={payMethod === 'mpesa' ? 'text-white' : 'text-gray-500'} />
+            </div>
+            <div>
+              <div className={`text-sm font-semibold ${payMethod === 'mpesa' ? 'text-teal-900' : 'text-gray-700'}`}>M-Pesa</div>
+              <div className="text-xs text-gray-400">STK Push</div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPayMethod('insurance')}
+            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+              payMethod === 'insurance'
+                ? 'border-teal-500 bg-teal-50'
+                : 'border-gray-200 bg-white hover:border-gray-300'
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${payMethod === 'insurance' ? 'bg-teal-600' : 'bg-gray-100'}`}>
+              <Heart size={16} className={payMethod === 'insurance' ? 'text-white' : 'text-gray-500'} />
+            </div>
+            <div>
+              <div className={`text-sm font-semibold ${payMethod === 'insurance' ? 'text-teal-900' : 'text-gray-700'}`}>Insurance / SHA</div>
+              <div className="text-xs text-gray-400">SHA, AAR, Jubilee…</div>
+            </div>
+          </button>
         </div>
+      </div>
 
-        {/* Privacy */}
-        <div className="card space-y-3">
-          <h2 className="font-semibold text-gray-900">Privacy Settings</h2>
-          {[
-            { name: 'share_assessments', label: 'Share my assessment results with therapist', desc: 'Helps them understand your condition better' },
-            { name: 'share_mood_logs', label: 'Share my mood logs with therapist', desc: 'Shows your recent emotional patterns' },
-          ].map(({ name, label, desc }) => (
-            <label key={name} className="flex items-start gap-3 cursor-pointer">
-              <input {...register(name as keyof BookForm)} type="checkbox" className="mt-1 rounded border-gray-300 text-primary-600" />
-              <div>
-                <div className="text-sm font-medium text-gray-900">{label}</div>
-                <div className="text-xs text-gray-500">{desc}</div>
+      {payMethod === 'mpesa' ? (
+        /* ── M-PESA FLOW ── */
+        <form onSubmit={handleSubmit(onSubmitMpesa)} className="space-y-5">
+          <div className="card space-y-4">
+            <h2 className="font-semibold text-gray-900">Session Details</h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date &amp; Time</label>
+              <input
+                {...register('scheduled_at', { required: 'Please select a date and time' })}
+                type="datetime-local"
+                min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
+                className="input-field"
+              />
+              {errors.scheduled_at && <p className="text-red-500 text-xs mt-1">{errors.scheduled_at.message}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+              <select {...register('duration_minutes', { valueAsNumber: true })} className="input-field">
+                <option value={30}>30 minutes — KES {Math.round(Number(pro.rate_per_hour) * 0.5).toLocaleString()}</option>
+                <option value={60}>60 minutes — KES {Number(pro.rate_per_hour).toLocaleString()} (recommended)</option>
+                <option value={90}>90 minutes — KES {Math.round(Number(pro.rate_per_hour) * 1.5).toLocaleString()}</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="card space-y-3">
+            <h2 className="font-semibold text-gray-900">Privacy Settings</h2>
+            {[
+              { name: 'share_assessments', label: 'Share my assessment results with therapist', desc: 'Helps them understand your condition better' },
+              { name: 'share_mood_logs', label: 'Share my mood logs with therapist', desc: 'Shows your recent emotional patterns' },
+            ].map(({ name, label, desc }) => (
+              <label key={name} className="flex items-start gap-3 cursor-pointer">
+                <input {...register(name as keyof BookForm)} type="checkbox" className="mt-1 rounded border-gray-300 text-primary-600" />
+                <div>
+                  <div className="text-sm font-medium text-gray-900">{label}</div>
+                  <div className="text-xs text-gray-500">{desc}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          <div className="card space-y-3">
+            <h2 className="font-semibold text-gray-900">M-Pesa Payment</h2>
+            <div className="flex items-start gap-2 text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <Shield size={14} className="flex-shrink-0 mt-0.5 text-blue-600" />
+              <span>Your phone number is used only to send the M-Pesa prompt and is not stored in your profile.</span>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                <Phone size={13} className="inline mr-1" />M-Pesa Phone Number
+              </label>
+              <input
+                {...register('phone', {
+                  required: 'Phone number required for payment',
+                  pattern: { value: /^(0[17]\d{8}|2547\d{8}|2541\d{8})$/, message: 'Enter a valid Kenyan number e.g. 0712345678' }
+                })}
+                className="input-field"
+                placeholder="0712345678"
+              />
+              {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3 space-y-1.5 text-sm">
+              <div className="flex justify-between text-gray-600"><span>Session ({duration} min)</span><span>KES {computedAmount.toLocaleString()}</span></div>
+              <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 pt-1.5"><span>Total to pay</span><span>KES {computedAmount.toLocaleString()}</span></div>
+            </div>
+          </div>
+
+          <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base">
+            {loading
+              ? <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /> Processing…</span>
+              : `Pay KES ${computedAmount.toLocaleString()} via M-Pesa`
+            }
+          </button>
+        </form>
+
+      ) : (
+        /* ── INSURANCE / SHA FLOW ── */
+        <>
+          {/* Step 1: session details (re-use same form structure) */}
+          {!pendingBookData ? (
+            <form onSubmit={handleSubmit(onSessionDetailsForInsurance)} className="space-y-5">
+              <div className="card space-y-4">
+                <h2 className="font-semibold text-gray-900">Session Details</h2>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date &amp; Time</label>
+                  <input
+                    {...register('scheduled_at', { required: 'Please select a date and time' })}
+                    type="datetime-local"
+                    min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
+                    className="input-field"
+                  />
+                  {errors.scheduled_at && <p className="text-red-500 text-xs mt-1">{errors.scheduled_at.message}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                  <select {...register('duration_minutes', { valueAsNumber: true })} className="input-field">
+                    <option value={30}>30 minutes — KES {Math.round(Number(pro.rate_per_hour) * 0.5).toLocaleString()}</option>
+                    <option value={60}>60 minutes — KES {Number(pro.rate_per_hour).toLocaleString()} (recommended)</option>
+                    <option value={90}>90 minutes — KES {Math.round(Number(pro.rate_per_hour) * 1.5).toLocaleString()}</option>
+                  </select>
+                </div>
               </div>
-            </label>
-          ))}
-        </div>
 
-        {/* Payment */}
-        <div className="card space-y-3">
-          <h2 className="font-semibold text-gray-900">M-Pesa Payment</h2>
-          <div className="flex items-start gap-2 text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <Shield size={14} className="flex-shrink-0 mt-0.5 text-blue-600" />
-            <span>Your phone number is used only to send the M-Pesa prompt and is not stored in your profile.</span>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              <Phone size={13} className="inline mr-1" />M-Pesa Phone Number
-            </label>
-            <input
-              {...register('phone', {
-                required: 'Phone number required for payment',
-                pattern: { value: /^(0[17]\d{8}|2547\d{8}|2541\d{8})$/, message: 'Enter a valid Kenyan number e.g. 0712345678' }
-              })}
-              className="input-field"
-              placeholder="0712345678"
-            />
-            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
-          </div>
-          <div className="bg-gray-50 rounded-lg p-3 space-y-1.5 text-sm">
-            <div className="flex justify-between text-gray-600">
-              <span>Session ({duration} min)</span>
-              <span>KES {computedAmount.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 pt-1.5">
-              <span>Total to pay</span>
-              <span>KES {computedAmount.toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
+              <div className="card space-y-3">
+                <h2 className="font-semibold text-gray-900">Privacy Settings</h2>
+                {[
+                  { name: 'share_assessments', label: 'Share my assessment results', desc: 'Helps therapist understand your condition' },
+                  { name: 'share_mood_logs', label: 'Share my mood logs', desc: 'Shows recent emotional patterns' },
+                ].map(({ name, label, desc }) => (
+                  <label key={name} className="flex items-start gap-3 cursor-pointer">
+                    <input {...register(name as keyof BookForm)} type="checkbox" className="mt-1 rounded border-gray-300 text-primary-600" />
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{label}</div>
+                      <div className="text-xs text-gray-500">{desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
 
-        <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base">
-          {loading
-            ? <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /> Processing…</span>
-            : `Pay KES ${computedAmount.toLocaleString()} via M-Pesa`
-          }
-        </button>
-      </form>
+              <button type="submit" className="btn-primary w-full py-3">
+                Continue to Insurance Details →
+              </button>
+            </form>
+
+          ) : (
+            /* Step 2: insurance details */
+            <form onSubmit={handleIns(onSubmitInsurance)} className="space-y-5">
+              <div className="card space-y-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Heart size={16} className="text-teal-600" />
+                  <h2 className="font-semibold text-gray-900">Insurance / SHA Details</h2>
+                </div>
+
+                <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 text-xs text-teal-800">
+                  <strong>SHA members:</strong> Your National Social Health Insurance Fund (SHIF) covers outpatient mental health consultations. Use your SHA member number (linked to your National ID) to claim. Co-payments may apply depending on your SHA tier.
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Provider</label>
+                  <select {...regIns('provider', { required: true })} className="input-field">
+                    {INSURANCE_PROVIDERS.map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    SHA Member Number / Insurance Card Number
+                  </label>
+                  <input
+                    {...regIns('member_number', { required: 'Member number is required' })}
+                    className="input-field"
+                    placeholder="e.g. SHA-1234567 or your card number"
+                  />
+                  {insErrors.member_number && <p className="text-red-500 text-xs mt-1">{insErrors.member_number.message}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    National ID / Passport Number
+                  </label>
+                  <input
+                    {...regIns('id_number', { required: 'ID number is required for verification' })}
+                    className="input-field"
+                    placeholder="e.g. 12345678"
+                  />
+                  {insErrors.id_number && <p className="text-red-500 text-xs mt-1">{insErrors.id_number.message}</p>}
+                  <p className="text-xs text-gray-400 mt-1">Used only for insurance verification. Not stored in your profile.</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Scheme / Plan Name <span className="text-gray-400">(optional)</span>
+                  </label>
+                  <input
+                    {...regIns('scheme_name')}
+                    className="input-field"
+                    placeholder="e.g. Jubilee Gold, SHA Tier 2"
+                  />
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                  <div className="flex justify-between text-gray-600 mb-1"><span>Session amount</span><span>KES {computedAmount.toLocaleString()}</span></div>
+                  <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 pt-1.5"><span>Claimed from insurer</span><span>KES {computedAmount.toLocaleString()}</span></div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+                  If your insurer rejects the claim or requires co-payment, we will contact you to complete the balance via M-Pesa.
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setPendingBookData(null)} className="btn-secondary flex-1">
+                  ← Back
+                </button>
+                <button type="submit" disabled={loading} className="btn-primary flex-1 py-3">
+                  {loading
+                    ? <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" />Submitting…</span>
+                    : 'Submit Insurance Claim'
+                  }
+                </button>
+              </div>
+            </form>
+          )}
+        </>
+      )}
     </div>
   )
 }
