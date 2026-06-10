@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
 import {
   Calendar, DollarSign, Star, Clock, CheckCircle,
-  AlertCircle, Users, TrendingUp, Settings, PlayCircle
+  AlertCircle, Users, TrendingUp, Settings, PlayCircle, Plus, X, Loader2
 } from 'lucide-react'
 
 interface Consultation {
@@ -46,10 +46,23 @@ function fmt(iso: string) {
     ' · ' + d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
 }
 
+interface DirectBookForm {
+  patient_username: string
+  scheduled_at: string
+  duration_minutes: string
+  agreed_amount: string
+  notes: string
+}
+
 export default function ProfessionalDashboard() {
   const user = useAuthStore(s => s.user)
+  const navigate = useNavigate()
   const [data, setData] = useState<ProfData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showDirectBook, setShowDirectBook] = useState(false)
+  const [directForm, setDirectForm] = useState<DirectBookForm>({ patient_username: '', scheduled_at: '', duration_minutes: '60', agreed_amount: '', notes: '' })
+  const [directLoading, setDirectLoading] = useState(false)
+  const [directError, setDirectError] = useState('')
 
   useEffect(() => {
     api.get('/professionals/me/dashboard')
@@ -57,6 +70,31 @@ export default function ProfessionalDashboard() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  const submitDirectBook = async () => {
+    setDirectError('')
+    if (!directForm.patient_username || !directForm.scheduled_at || !directForm.agreed_amount) {
+      setDirectError('Please fill in patient, date/time, and agreed amount.')
+      return
+    }
+    setDirectLoading(true)
+    try {
+      const r = await api.post('/consultations/direct-book', {
+        patient_username: directForm.patient_username,
+        scheduled_at: directForm.scheduled_at,
+        duration_minutes: parseInt(directForm.duration_minutes),
+        agreed_amount: parseFloat(directForm.agreed_amount),
+        notes: directForm.notes || undefined,
+      })
+      setShowDirectBook(false)
+      setDirectForm({ patient_username: '', scheduled_at: '', duration_minutes: '60', agreed_amount: '', notes: '' })
+      navigate(r.data.join_url)
+    } catch (e: any) {
+      setDirectError(e.response?.data?.error ?? 'Booking failed. Please try again.')
+    } finally {
+      setDirectLoading(false)
+    }
+  }
 
   if (loading) {
     return <div className="text-gray-400 py-16 text-center">Loading your dashboard…</div>
@@ -95,6 +133,61 @@ export default function ProfessionalDashboard() {
           {isVerified ? 'KMPDC Verified' : isPending ? 'Verification Pending' : prof.verification_status}
         </span>
       </div>
+
+      {/* Direct Booking Modal */}
+      {showDirectBook && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-gray-900 flex items-center gap-2"><Plus size={16} className="text-blue-600" /> Book Session Directly</h2>
+              <button onClick={() => setShowDirectBook(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
+            <p className="text-sm text-gray-500">Creates a confirmed session without online payment. Use for cash payments, EAP sessions, or testing.</p>
+            <div className="space-y-3">
+              <div>
+                <label className="label">Patient username or email</label>
+                <input className="input-field" placeholder="e.g. john_doe or john@email.com"
+                  value={directForm.patient_username} onChange={e => setDirectForm(f => ({ ...f, patient_username: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Date &amp; Time</label>
+                  <input type="datetime-local" className="input-field" value={directForm.scheduled_at}
+                    onChange={e => setDirectForm(f => ({ ...f, scheduled_at: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Duration</label>
+                  <select className="input-field" value={directForm.duration_minutes}
+                    onChange={e => setDirectForm(f => ({ ...f, duration_minutes: e.target.value }))}>
+                    <option value="30">30 min</option>
+                    <option value="60">60 min</option>
+                    <option value="90">90 min</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="label">Agreed amount (KES) — enter 0 for test/free sessions</label>
+                <input type="number" className="input-field" placeholder="0" min="0"
+                  value={directForm.agreed_amount} onChange={e => setDirectForm(f => ({ ...f, agreed_amount: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">Internal notes (optional)</label>
+                <input className="input-field" placeholder="e.g. EAP session, cash paid"
+                  value={directForm.notes} onChange={e => setDirectForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
+              {directError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{directError}</p>}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={submitDirectBook} disabled={directLoading}
+                className="btn-primary flex-1 flex items-center justify-center gap-2">
+                {directLoading && <Loader2 size={14} className="animate-spin" />}
+                {directLoading ? 'Creating…' : 'Create & Start Session'}
+              </button>
+              <button onClick={() => setShowDirectBook(false)} className="btn-secondary flex-1">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pending verification notice */}
       {isPending && (
@@ -138,7 +231,7 @@ export default function ProfessionalDashboard() {
       {/* Quick actions */}
       <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           <Link to="/consultations" className="card hover:border-primary-300 transition-colors group">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center group-hover:bg-primary-200 transition-colors">
@@ -150,6 +243,18 @@ export default function ProfessionalDashboard() {
               </div>
             </div>
           </Link>
+
+          <button onClick={() => setShowDirectBook(true)} className="card hover:border-blue-300 transition-colors group text-left">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                <Plus size={20} className="text-blue-700" />
+              </div>
+              <div>
+                <div className="font-medium text-gray-900">Book Direct Session</div>
+                <div className="text-xs text-gray-500">Cash, EAP, or testing</div>
+              </div>
+            </div>
+          </button>
 
           <Link to="/availability" className="card hover:border-primary-300 transition-colors group">
             <div className="flex items-center gap-3">

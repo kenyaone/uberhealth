@@ -493,6 +493,58 @@ class ConsultationController extends Controller
         ]);
     }
 
+    // ─── Professional: direct-book a confirmed session (no payment needed) ──────
+    // Used when payment was made offline, via EAP, or for test sessions.
+
+    public function directBook(Request $request)
+    {
+        $user = auth('api')->user();
+        $pro  = $user->professional;
+        if (!$pro) return response()->json(['error' => 'Not a professional'], 403);
+
+        $validator = Validator::make($request->all(), [
+            'patient_username' => 'required|string',
+            'scheduled_at'     => 'required|date',
+            'duration_minutes' => 'sometimes|integer|in:30,60,90',
+            'agreed_amount'    => 'required|numeric|min:0',
+            'notes'            => 'sometimes|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        $patient = \App\Models\User::where('username', $request->patient_username)
+            ->orWhere('email', $request->patient_username)
+            ->first();
+
+        if (!$patient) {
+            return response()->json(['error' => 'Patient not found — check username or email'], 404);
+        }
+
+        $consultationId = 'cons-' . bin2hex(random_bytes(4));
+
+        $consultation = Consultation::create([
+            'consultation_id'      => $consultationId,
+            'user_id'              => $patient->id,
+            'professional_id'      => $pro->id,
+            'scheduled_at'         => $request->scheduled_at,
+            'duration_minutes'     => $request->duration_minutes ?? 60,
+            'status'               => 'confirmed',
+            'amount'               => $request->agreed_amount,
+            'jitsi_room'           => $consultationId,
+            'professional_notes'   => $request->notes ?? null,
+            'share_assessments'    => true,
+            'share_mood_logs'      => true,
+        ]);
+
+        return response()->json([
+            'message'      => 'Session created and confirmed.',
+            'consultation' => $consultation->load('professional.user:id,display_name'),
+            'join_url'     => "/session/{$consultationId}",
+        ], 201);
+    }
+
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private function getOwnConsultation(int $id, int $userId): ?Consultation

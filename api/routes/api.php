@@ -95,6 +95,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/consultations', [ConsultationController::class, 'index']);
     Route::post('/consultations', [ConsultationController::class, 'store']);
     Route::get('/consultations/professional/list', [ConsultationController::class, 'proList']);
+    Route::post('/consultations/direct-book', [ConsultationController::class, 'directBook']);
     Route::get('/consultations/{id}', [ConsultationController::class, 'show']);
     Route::post('/consultations/{id}/join', [ConsultationController::class, 'join']);
     Route::post('/consultations/{id}/end', [ConsultationController::class, 'endSession']);

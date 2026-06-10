@@ -94,12 +94,6 @@ export default function Professionals() {
             <option value="gambling">Gambling</option>
             <option value="trauma">Trauma & PTSD</option>
           </select>
-          <select value={maxRate} onChange={e => setMaxRate(e.target.value)} className="input-field">
-            <option value="">Any Rate</option>
-            <option value="2000">Up to KES 2,000</option>
-            <option value="3000">Up to KES 3,000</option>
-            <option value="5000">Up to KES 5,000</option>
-          </select>
         </div>
       </div>
 
@@ -176,8 +170,7 @@ export default function Professionals() {
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <div className="font-bold text-primary-700">KES {Number(pro.rate_per_hour).toLocaleString()}</div>
-                    <div className="text-xs text-gray-400">per hour</div>
+                    <div className="text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 px-2 py-1 rounded-lg">Discuss at booking</div>
                   </div>
                 </div>
 

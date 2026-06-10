@@ -214,7 +214,7 @@ export default function BookConsultation() {
           </p>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 mb-5">
-          Your session is <strong>pending insurer confirmation</strong>. If the claim is not approved within 48 hours, you will be notified to complete payment via M-Pesa.
+          Your session is <strong>pending insurer confirmation</strong>. If the claim is not approved within 48 hours, you will be notified to complete payment directly.
         </div>
         <div className="flex gap-3">
           <button onClick={() => navigate('/consultations')} className="btn-primary flex-1">View My Sessions</button>
@@ -229,7 +229,7 @@ export default function BookConsultation() {
       <div className="max-w-lg mx-auto mt-16 card text-center py-10">
         <Clock size={48} className="text-yellow-500 mx-auto mb-4" />
         <h2 className="text-xl font-bold text-gray-900 mb-2">Payment Not Confirmed</h2>
-        <p className="text-gray-600 mb-4">The M-Pesa payment was not confirmed in time. Your booking is pending — if you paid, it will confirm automatically.</p>
+        <p className="text-gray-600 mb-4">The payment was not confirmed in time. Your booking is pending — if you paid, it will confirm automatically.</p>
         <div className="flex gap-3">
           <button onClick={() => navigate('/consultations')} className="btn-primary flex-1">Check My Sessions</button>
           <button onClick={() => { setStep('details'); setError('') }} className="btn-secondary flex-1">Try Again</button>

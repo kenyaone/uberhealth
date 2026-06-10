@@ -57,8 +57,7 @@ export default function ProfessionalDetail() {
             </div>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-primary-700">KES {Number(pro.rate_per_hour).toLocaleString()}</div>
-            <div className="text-sm text-gray-400">per hour</div>
+            <div className="text-sm font-medium text-teal-700 bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-xl">Rate discussed at booking</div>
           </div>
         </div>
 
