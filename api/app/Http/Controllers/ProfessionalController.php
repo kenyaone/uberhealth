@@ -277,9 +277,9 @@ class ProfessionalController extends Controller
         }
 
         $upcomingConsultations = $professional->consultations()
-            ->with('user:id,display_name,avatar')
-            ->whereIn('status', ['pending', 'confirmed'])
-            ->where('scheduled_at', '>', now())
+            ->with('user:id,display_name,username,avatar')
+            ->whereIn('status', ['pending', 'confirmed', 'in_progress'])
+            ->where('scheduled_at', '>', now()->subHours(3))
             ->orderBy('scheduled_at')
             ->limit(10)
             ->get();

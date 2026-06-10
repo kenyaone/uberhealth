@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
@@ -17,6 +17,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const { setAuth } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
+  const from = (location.state as any)?.from?.pathname || '/dashboard'
 
   const onSubmit = async (data: LoginForm) => {
     setLoading(true)
@@ -24,7 +26,7 @@ export default function Login() {
     try {
       const res = await api.post('/auth/login', data)
       setAuth(res.data.user, res.data.access, res.data.refresh)
-      navigate('/dashboard')
+      navigate(from, { replace: true })
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Check your credentials.')
     } finally {

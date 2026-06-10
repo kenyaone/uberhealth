@@ -90,7 +90,7 @@ class CaseloadController extends Controller
 
         $moods = MoodLog::where('user_id', $patientId)
             ->orderByDesc('logged_at')->limit(30)
-            ->get(['mood_score', 'note', 'logged_at']);
+            ->get(['mood_score', 'notes', 'logged_at']);
 
         $goals = RecoveryGoal::where('user_id', $patientId)->get();
 

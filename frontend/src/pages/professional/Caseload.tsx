@@ -37,7 +37,13 @@ export default function Caseload() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    api.get('/caseload').then(r => setPatients(r.data.patients)).finally(() => setLoading(false))
+    const fetch = () =>
+      api.get('/caseload')
+        .then(r => setPatients(r.data.patients ?? []))
+        .catch(() => {})
+    fetch().finally(() => setLoading(false))
+    const poll = setInterval(fetch, 10_000)
+    return () => clearInterval(poll)
   }, [])
 
   const filtered = patients.filter(p =>
@@ -110,8 +116,8 @@ export default function Caseload() {
                     </span>
                   )}
                   {p.latest_assessment && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${SEV_COLOR[p.latest_assessment.severity] ?? 'text-gray-500 bg-gray-50'}`}>
-                      {p.latest_assessment.type.toUpperCase()} — {p.latest_assessment.severity}
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${SEV_COLOR[p.latest_assessment.severity?.toLowerCase()] ?? 'text-gray-500 bg-gray-50'}`}>
+                      {p.latest_assessment.type ? `${p.latest_assessment.type.toUpperCase()} — ` : ''}{p.latest_assessment.severity}
                     </span>
                   )}
                   {p.next_session && (

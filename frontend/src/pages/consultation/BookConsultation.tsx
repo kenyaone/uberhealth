@@ -4,10 +4,10 @@ import { useForm } from 'react-hook-form'
 import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
 import type { Professional } from '../../types'
-import { Shield, CheckCircle, Loader2, Clock, Video, CreditCard, Heart } from 'lucide-react'
+import { Shield, CheckCircle, Loader2, Clock, Video, CreditCard, Heart, Banknote } from 'lucide-react'
 
-type Step = 'details' | 'paying' | 'success' | 'failed' | 'insurance_success'
-type PayMethod = 'paystack' | 'insurance'
+type Step = 'details' | 'paying' | 'success' | 'failed' | 'insurance_success' | 'cash_success'
+type PayMethod = 'paystack' | 'insurance' | 'cash'
 
 interface BookForm {
   scheduled_at: string
@@ -73,7 +73,7 @@ export default function BookConsultation() {
       : '/consultations'
     const bookRes = await api.post(endpoint, {
       professional_id: Number(professionalId),
-      scheduled_at: data.scheduled_at,
+      scheduled_at: new Date(data.scheduled_at).toISOString(),
       duration_minutes: Number(data.duration_minutes),
       share_assessments: data.share_assessments,
       share_mood_logs: data.share_mood_logs,
@@ -170,6 +170,32 @@ export default function BookConsultation() {
     }
   }
 
+  const onSubmitCash = async (data: BookForm) => {
+    setLoading(true)
+    setError('')
+    try {
+      const endpoint = followUpState?.is_follow_up && followUpState?.parent_id
+        ? `/consultations/${followUpState.parent_id}/follow-up`
+        : '/consultations'
+      const res = await api.post(endpoint, {
+        professional_id: Number(professionalId),
+        scheduled_at: new Date(data.scheduled_at).toISOString(),
+        duration_minutes: Number(data.duration_minutes),
+        share_assessments: data.share_assessments,
+        share_mood_logs: data.share_mood_logs,
+        payment_method: 'cash',
+      })
+      const c = res.data.consultation
+      setConsultationId(c.consultation_id)
+      setNumericId(c.id)
+      setStep('cash_success')
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Booking failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (!pro) return <div className="text-center py-10 text-gray-400">Loading…</div>
 
   if (step === 'success') {
@@ -224,6 +250,28 @@ export default function BookConsultation() {
     )
   }
 
+  if (step === 'cash_success') {
+    return (
+      <div className="max-w-lg mx-auto mt-16 card text-center py-12">
+        <CheckCircle size={56} className="text-green-500 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Session Confirmed!</h2>
+        <p className="text-gray-600 mb-1">Your session has been booked. Payment will be made at the session.</p>
+        <p className="text-sm text-gray-500 mb-6">Session ID: <strong>{consultationId}</strong></p>
+        <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 mb-6 text-sm text-primary-800 text-left">
+          <div className="flex items-center gap-2 mb-1">
+            <Video size={14} />
+            <strong>How to join your session:</strong>
+          </div>
+          Go to <strong>My Sessions</strong> → click <strong>Join Session</strong> at the scheduled time. A private Jitsi video room will open.
+        </div>
+        <div className="flex gap-3">
+          <button onClick={() => navigate('/consultations')} className="btn-primary flex-1">View My Sessions</button>
+          <button onClick={() => navigate('/dashboard')} className="btn-secondary flex-1">Dashboard</button>
+        </div>
+      </div>
+    )
+  }
+
   if (step === 'failed') {
     return (
       <div className="max-w-lg mx-auto mt-16 card text-center py-10">
@@ -260,7 +308,7 @@ export default function BookConsultation() {
           <div className="text-sm text-gray-500">{pro.specializations?.map(s => s.name).join(', ')}</div>
         </div>
         <div className="text-right">
-          <div className="font-bold text-primary-700">KES {Number(pro.rate_per_hour).toLocaleString()}/hr</div>
+          <div className="text-sm font-medium text-teal-700 bg-teal-50 border border-teal-200 px-2 py-1 rounded-lg">Rate agreed at booking</div>
           <div className="text-xs text-gray-400">{pro.years_experience} yrs exp</div>
         </div>
       </div>
@@ -270,7 +318,7 @@ export default function BookConsultation() {
       {/* ── PAYMENT METHOD SELECTOR ── */}
       <div className="card">
         <h2 className="font-semibold text-gray-900 mb-3">How will you pay?</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <button
             type="button"
             onClick={() => setPayMethod('paystack')}
@@ -285,7 +333,7 @@ export default function BookConsultation() {
             </div>
             <div>
               <div className={`text-sm font-semibold ${payMethod === 'paystack' ? 'text-blue-900' : 'text-gray-700'}`}>Paystack</div>
-              <div className="text-xs text-gray-400">Card · M-Pesa · Bank</div>
+              <div className="text-xs text-gray-400">Card · Bank transfer</div>
             </div>
           </button>
 
@@ -304,6 +352,24 @@ export default function BookConsultation() {
             <div>
               <div className={`text-sm font-semibold ${payMethod === 'insurance' ? 'text-teal-900' : 'text-gray-700'}`}>Insurance / SHA</div>
               <div className="text-xs text-gray-400">SHA, AAR, Jubilee…</div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPayMethod('cash')}
+            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+              payMethod === 'cash'
+                ? 'border-green-500 bg-green-50'
+                : 'border-gray-200 bg-white hover:border-gray-300'
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${payMethod === 'cash' ? 'bg-green-600' : 'bg-gray-100'}`}>
+              <Banknote size={16} className={payMethod === 'cash' ? 'text-white' : 'text-gray-500'} />
+            </div>
+            <div>
+              <div className={`text-sm font-semibold ${payMethod === 'cash' ? 'text-green-900' : 'text-gray-700'}`}>Pay at Session</div>
+              <div className="text-xs text-gray-400">Cash · In person</div>
             </div>
           </button>
         </div>
@@ -356,12 +422,12 @@ export default function BookConsultation() {
             </h2>
             <div className="flex items-start gap-2 text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
               <Shield size={14} className="flex-shrink-0 mt-0.5 text-blue-600" />
-              <span>Secure payment via Paystack. Choose M-Pesa, Visa/Mastercard, or bank transfer at checkout.</span>
+              <span>Secure payment via Paystack. Choose Visa/Mastercard or bank transfer at checkout.</span>
             </div>
             <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700">
               <div className="flex items-center justify-between">
                 <span className="font-medium">Therapist's rate</span>
-                <span className="font-bold text-gray-900">KES {Number(pro.rate_per_hour).toLocaleString()}/hr</span>
+                <span className="font-medium text-teal-700">Agreed with therapist</span>
               </div>
               <p className="text-xs text-gray-400 mt-2">Final session fee is agreed with your therapist and confirmed at checkout.</p>
             </div>
@@ -375,7 +441,7 @@ export default function BookConsultation() {
           </button>
         </form>
 
-      ) : (
+      ) : payMethod === 'insurance' ? (
         /* ── INSURANCE / SHA FLOW ── */
         <>
           {/* Step 1: session details (re-use same form structure) */}
@@ -488,7 +554,7 @@ export default function BookConsultation() {
                 </div>
 
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
-                  If your insurer rejects the claim or requires co-payment, we will contact you to complete the balance via M-Pesa.
+                  If your insurer rejects the claim or requires co-payment, we will contact you to complete the balance directly.
                 </div>
               </div>
 
@@ -506,6 +572,64 @@ export default function BookConsultation() {
             </form>
           )}
         </>
+      ) : (
+        /* ── CASH / PAY AT SESSION FLOW ── */
+        <form onSubmit={handleSubmit(onSubmitCash)} className="space-y-5">
+          <div className="card space-y-4">
+            <h2 className="font-semibold text-gray-900">Session Details</h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date &amp; Time</label>
+              <input
+                {...register('scheduled_at', { required: 'Please select a date and time' })}
+                type="datetime-local"
+                min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
+                className="input-field"
+              />
+              {errors.scheduled_at && <p className="text-red-500 text-xs mt-1">{errors.scheduled_at.message}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+              <select {...register('duration_minutes', { valueAsNumber: true })} className="input-field">
+                <option value={30}>30 minutes</option>
+                <option value={60}>60 minutes (recommended)</option>
+                <option value={90}>90 minutes</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="card space-y-3">
+            <h2 className="font-semibold text-gray-900">Privacy Settings</h2>
+            {[
+              { name: 'share_assessments', label: 'Share my assessment results with therapist', desc: 'Helps them understand your condition better' },
+              { name: 'share_mood_logs', label: 'Share my mood logs with therapist', desc: 'Shows your recent emotional patterns' },
+            ].map(({ name, label, desc }) => (
+              <label key={name} className="flex items-start gap-3 cursor-pointer">
+                <input {...register(name as keyof BookForm)} type="checkbox" className="mt-1 rounded border-gray-300 text-primary-600" />
+                <div>
+                  <div className="text-sm font-medium text-gray-900">{label}</div>
+                  <div className="text-xs text-gray-500">{desc}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          <div className="card">
+            <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800">
+              <Banknote size={16} className="flex-shrink-0 mt-0.5 text-green-600" />
+              <div>
+                <div className="font-semibold mb-0.5">Pay at Session</div>
+                <div>Your session will be <strong>confirmed immediately</strong>. Agree the fee directly with your therapist and pay in cash or bank transfer at the time of the session.</div>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base">
+            {loading
+              ? <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" />Confirming…</span>
+              : 'Confirm Booking'
+            }
+          </button>
+        </form>
       )}
     </div>
   )

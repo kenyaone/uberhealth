@@ -13,7 +13,7 @@ interface Consultation {
   duration_minutes: number
   status: string
   amount: number
-  user: { id: number; display_name: string; avatar?: string }
+  user: { id: number; display_name: string; username?: string; avatar?: string }
 }
 
 interface ProfData {
@@ -64,11 +64,15 @@ export default function ProfessionalDashboard() {
   const [directLoading, setDirectLoading] = useState(false)
   const [directError, setDirectError] = useState('')
 
-  useEffect(() => {
+  const fetchDashboard = () =>
     api.get('/professionals/me/dashboard')
       .then(r => setData(r.data))
       .catch(() => {})
-      .finally(() => setLoading(false))
+
+  useEffect(() => {
+    fetchDashboard().finally(() => setLoading(false))
+    const poll = setInterval(fetchDashboard, 10_000)
+    return () => clearInterval(poll)
   }, [])
 
   const submitDirectBook = async () => {
@@ -81,7 +85,7 @@ export default function ProfessionalDashboard() {
     try {
       const r = await api.post('/consultations/direct-book', {
         patient_username: directForm.patient_username,
-        scheduled_at: directForm.scheduled_at,
+        scheduled_at: new Date(directForm.scheduled_at).toISOString(),
         duration_minutes: parseInt(directForm.duration_minutes),
         agreed_amount: parseFloat(directForm.agreed_amount),
         notes: directForm.notes || undefined,
@@ -299,10 +303,10 @@ export default function ProfessionalDashboard() {
               <div key={c.id} className="card flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 bg-primary-100 rounded-full flex items-center justify-center text-primary-700 font-bold text-sm">
-                    {c.user.display_name.charAt(0).toUpperCase()}
+                    {(c.user.display_name || c.user.username || 'P').charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <div className="font-medium text-gray-900">{c.user.display_name}</div>
+                    <div className="font-medium text-gray-900">{c.user.display_name || c.user.username || 'Patient'}</div>
                     <div className="text-xs text-gray-500">{fmt(c.scheduled_at)} · {c.duration_minutes} min</div>
                   </div>
                 </div>
@@ -360,7 +364,7 @@ export default function ProfessionalDashboard() {
             </div>
           ))}
         </div>
-        <p className="text-xs text-primary-600 mt-3 text-center">Paid directly to your M-Pesa within 24 hours of each completed session.</p>
+        <p className="text-xs text-primary-600 mt-3 text-center">Paid directly to your mobile money within 24 hours of each completed session.</p>
       </div>
 
       {/* Crisis reminder */}

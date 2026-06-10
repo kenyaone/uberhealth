@@ -26,21 +26,26 @@ export default function MyConsultations() {
 
   useEffect(() => {
     const endpoint = isProfessional ? '/consultations/professional/list' : '/consultations'
-    api.get(endpoint)
-      .then(r => {
-        const data = r.data.data ?? r.data.results ?? r.data
-        setConsultations(Array.isArray(data) ? data : [])
-      })
-      .catch(() => setError('Could not load sessions.'))
-      .finally(() => setLoading(false))
+    const fetchConsultations = () =>
+      api.get(endpoint)
+        .then(r => {
+          const data = r.data.data ?? r.data.results ?? r.data
+          setConsultations(Array.isArray(data) ? data : [])
+        })
+        .catch(() => setError('Could not load sessions.'))
+
+    fetchConsultations().finally(() => setLoading(false))
+    const poll = setInterval(fetchConsultations, 10_000)
+    return () => clearInterval(poll)
   }, [isProfessional])
 
   const doReschedule = async () => {
     if (!rescheduling || !newDate) return
     setReschedSaving(true)
     try {
-      await api.put(`/consultations/${rescheduling.id}/reschedule`, { scheduled_at: newDate })
-      setConsultations(prev => prev.map(c => c.id === rescheduling.id ? { ...c, scheduled_at: newDate } : c))
+      const utcDate = new Date(newDate).toISOString()
+      await api.put(`/consultations/${rescheduling.id}/reschedule`, { scheduled_at: utcDate })
+      setConsultations(prev => prev.map(c => c.id === rescheduling.id ? { ...c, scheduled_at: utcDate } : c))
       setRescheduling(null)
       setNewDate('')
     } catch (e: any) {

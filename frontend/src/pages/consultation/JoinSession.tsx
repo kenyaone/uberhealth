@@ -67,8 +67,6 @@ export default function JoinSession() {
   const [cameraOff, setCameraOff] = useState(true)
   const [sessionPresence, setSessionPresence] = useState<PresenceEntry[]>([])
   const presenceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const jitsiContainerRef = useRef<HTMLDivElement>(null)
-  const jitsiApiRef = useRef<any>(null)
 
   // Poll session presence once the session is open in another tab
   useEffect(() => {
@@ -101,64 +99,29 @@ export default function JoinSession() {
       })
   }, [consultationId])
 
-  const handleJoin = useCallback(async () => {
+  const buildJitsiUrl = useCallback((room: string) => {
+    const name = encodeURIComponent(user?.display_name || 'User')
+    const cfg = [
+      'config.prejoinPageEnabled=false',
+      'config.lobbyModeEnabled=false',
+      'config.disableLobby=true',
+      'config.startWithoutUserConsent=true',
+      'config.disableDeepLinking=true',
+      'config.disableInviteFunctions=true',
+      'config.requireDisplayName=false',
+      cameraOff ? 'config.startWithVideoMuted=true' : '',
+      videoMode === 'audio' ? 'config.startAudioOnly=true' : '',
+      `userInfo.displayName=${name}`,
+    ].filter(Boolean).join('&')
+    return `https://meet.ffmuc.net/${room}#${cfg}`
+  }, [user, cameraOff, videoMode])
+
+  const handleJoin = useCallback(() => {
     if (!session) return
+    const url = buildJitsiUrl(session.room)
+    window.open(url, 'jitsi-session', 'noopener,noreferrer')
     setPhase('joined')
-    // Allow DOM to render the jitsi container div before mounting
-    await new Promise(r => setTimeout(r, 120))
-
-    // Load external_api.js once
-    if (!(window as any).JitsiMeetExternalAPI) {
-      await new Promise<void>((resolve, reject) => {
-        const s = document.createElement('script')
-        s.src = 'https://meet.jit.si/external_api.js'
-        s.onload = () => resolve()
-        s.onerror = () => reject(new Error('Jitsi script failed to load'))
-        document.head.appendChild(s)
-      })
-    }
-
-    if (!jitsiContainerRef.current) return
-
-    jitsiApiRef.current?.dispose()
-
-    const JitsiAPI = (window as any).JitsiMeetExternalAPI
-    const api = new JitsiAPI('meet.jit.si', {
-      roomName: session.room,
-      width: '100%',
-      height: 520,
-      parentNode: jitsiContainerRef.current,
-      configOverwrite: {
-        prejoinPageEnabled: false,
-        hideLobbyButton: true,
-        enableLobbyChat: false,
-        disableDeepLinking: true,
-        startWithVideoMuted: cameraOff,
-        startAudioOnly: videoMode === 'audio',
-        disableInviteFunctions: true,
-        subject: 'Afya Yako Siri Yako — Private Session',
-        requireDisplayName: false,
-        toolbarButtons: ['microphone', 'camera', 'chat', 'raisehand', 'tileview', 'hangup'],
-      },
-      interfaceConfigOverwrite: {
-        SHOW_PROMOTIONAL_CLOSE_PAGE: false,
-        HIDE_INVITE_MORE_HEADER: true,
-        MOBILE_APP_PROMO: false,
-        DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
-        DEFAULT_BACKGROUND: '#0a5e2a',
-      },
-      userInfo: {
-        displayName: user?.display_name || 'User',
-        email: '',
-      },
-    })
-    jitsiApiRef.current = api
-  }, [session, cameraOff, videoMode, user])
-
-  // Clean up Jitsi on unmount
-  useEffect(() => {
-    return () => { jitsiApiRef.current?.dispose() }
-  }, [])
+  }, [session, buildJitsiUrl])
 
   const handleEndSession = async () => {
     if (!session) return
@@ -431,30 +394,40 @@ export default function JoinSession() {
         </div>
       )}
 
-      {/* Embedded Jitsi video */}
+      {/* Session active — video running in separate tab */}
       {!isCompleted && phase === 'joined' && (
-        <div className="space-y-4">
-          <div
-            ref={jitsiContainerRef}
-            className="rounded-2xl overflow-hidden border border-gray-200 shadow-lg bg-gray-900"
-            style={{ minHeight: 520 }}
-          />
-          {/* Presence indicator below video */}
-          {(() => {
-            const otherRole = is_professional ? 'user' : 'professional'
-            const otherLabel = is_professional ? 'Patient' : 'Therapist'
-            const others = sessionPresence.filter(p => p.role === otherRole)
-            const otherPresent = others.length > 0
-            return (
-              <div className="flex items-center gap-2 text-xs text-gray-500 px-1">
-                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${otherPresent ? 'bg-green-400 animate-pulse' : 'bg-gray-300'}`} />
-                {otherPresent
-                  ? <><span className="font-medium text-green-700">{others[0].display_name || otherLabel}</span> is in the session<Wifi size={11} className="ml-auto text-green-400" /></>
-                  : <><span>Waiting for {otherLabel} to join…</span><WifiOff size={11} className="ml-auto text-gray-300" /></>
-                }
-              </div>
-            )
-          })()}
+        <div className="card bg-green-50 border border-green-200 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="w-3 h-3 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
+            <div>
+              <div className="font-semibold text-green-900">Video session is open</div>
+              <div className="text-xs text-green-700">Your video call is running in a separate tab</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={() => window.open(buildJitsiUrl(session!.room), 'jitsi-session', 'noopener,noreferrer')}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            >
+              <Video size={14} /> Return to Video Call
+            </button>
+            {/* Presence indicator */}
+            {(() => {
+              const otherRole = is_professional ? 'user' : 'professional'
+              const otherLabel = is_professional ? 'Patient' : 'Therapist'
+              const others = sessionPresence.filter(p => p.role === otherRole)
+              const otherPresent = others.length > 0
+              return (
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${otherPresent ? 'bg-green-400 animate-pulse' : 'bg-gray-300'}`} />
+                  {otherPresent
+                    ? <><span className="font-medium text-green-700">{others[0].display_name || otherLabel}</span> is in the session <Wifi size={11} className="ml-1 text-green-400" /></>
+                    : <><span>Waiting for {otherLabel} to join…</span> <WifiOff size={11} className="ml-1 text-gray-300" /></>
+                  }
+                </div>
+              )
+            })()}
+          </div>
         </div>
       )}
 

@@ -19,7 +19,7 @@ class ConsultationController extends Controller
     public function index()
     {
         $user = auth('api')->user();
-        $consultations = Consultation::with(['professional.user:id,display_name,avatar', 'payment'])
+        $consultations = Consultation::with(['professional.user:id,display_name,username,avatar', 'payment'])
             ->where('user_id', $user->id)
             ->orderByDesc('scheduled_at')
             ->paginate(20);
@@ -37,6 +37,7 @@ class ConsultationController extends Controller
             'duration_minutes' => 'sometimes|integer|in:30,60,90',
             'share_assessments'=> 'sometimes|boolean',
             'share_mood_logs'  => 'sometimes|boolean',
+            'payment_method'   => 'sometimes|string|in:paystack,insurance,cash',
         ]);
 
         if ($validator->fails()) {
@@ -53,6 +54,7 @@ class ConsultationController extends Controller
         $duration = $request->duration_minutes ?? 60;
         $amount = $professional->rate_per_hour * ($duration / 60);
         $consultationId = 'cons-' . bin2hex(random_bytes(4));
+        $isCash = $request->input('payment_method') === 'cash';
 
         $consultation = Consultation::create([
             'consultation_id'   => $consultationId,
@@ -60,15 +62,17 @@ class ConsultationController extends Controller
             'professional_id'   => $professional->id,
             'scheduled_at'      => $request->scheduled_at,
             'duration_minutes'  => $duration,
-            'status'            => 'pending',
+            'status'            => $isCash ? 'confirmed' : 'pending',
             'amount'            => $amount,
             'jitsi_room'        => $consultationId,
             'share_assessments' => $request->boolean('share_assessments', false),
             'share_mood_logs'   => $request->boolean('share_mood_logs', false),
         ]);
 
+        $message = $isCash ? 'Session confirmed. Pay at the time of the session.' : 'Consultation booked. Proceed to payment.';
+
         return response()->json([
-            'message'      => 'Consultation booked. Proceed to payment.',
+            'message'      => $message,
             'consultation' => $consultation->load('professional.user:id,display_name'),
         ], 201);
     }
@@ -106,7 +110,7 @@ class ConsultationController extends Controller
         }
 
         $isProfessional = $consultation->professional->user_id === $user->id;
-        $jitsiUrl = 'https://meet.jit.si/' . $consultation->jitsi_room;
+        $jitsiUrl = 'https://meet.ffmuc.net/' . $consultation->jitsi_room;
 
         // Shared data the professional can see
         $sharedData = [];
@@ -119,7 +123,7 @@ class ConsultationController extends Controller
             if ($consultation->share_mood_logs) {
                 $sharedData['mood_logs'] = MoodLog::where('user_id', $consultation->user_id)
                     ->latest()->take(7)
-                    ->get(['mood_score', 'note', 'logged_at']);
+                    ->get(['mood_score', 'notes', 'logged_at']);
             }
         }
 
@@ -310,7 +314,7 @@ class ConsultationController extends Controller
             return response()->json(['error' => 'Professional profile not found'], 404);
         }
 
-        $consultations = Consultation::with(['user:id,display_name,avatar', 'payment'])
+        $consultations = Consultation::with(['user:id,display_name,username,avatar', 'payment'])
             ->where('professional_id', $professional->id)
             ->orderByDesc('scheduled_at')
             ->paginate(20);
