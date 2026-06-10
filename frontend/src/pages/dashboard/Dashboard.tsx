@@ -67,14 +67,17 @@ export default function Dashboard() {
         </Link>
       )}
 
-      {/* Greeting */}
+      {/* Gradient greeting hero */}
+      <div className="rounded-2xl p-6 text-white" style={{ background: 'linear-gradient(135deg, #0a5e2a 0%, #0d9488 100%)' }}>
+        <h1 className="text-2xl font-bold mb-1">
+          {t('welcomeBack')}, {user?.display_name} 👋
+        </h1>
+        <p className="text-white/70 text-sm">{t('howAreYou')}</p>
+      </div>
+
+      {/* My therapist continuity card */}
       <div className="flex items-start justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {t('welcomeBack')}, {user?.display_name} 👋
-          </h1>
-          <p className="text-gray-500 mt-1">{t('howAreYou')}</p>
-        </div>
+        <div className="flex-1" />
 
         {/* My Therapist — continuity card */}
         {myTherapist ? (
@@ -102,55 +105,45 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Quick stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card text-center">
-          <ClipboardList size={24} className="text-primary-600 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-gray-900">{assessments.length}</div>
-          <div className="text-xs text-gray-500">Assessments</div>
-        </div>
-        <div className="card text-center">
-          <Heart size={24} className="text-rose-500 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-gray-900">{avgMood ?? '—'}</div>
-          <div className="text-xs text-gray-500">Avg Mood (7d)</div>
-        </div>
-        <div className="card text-center">
-          <TrendingUp size={24} className="text-green-500 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-gray-900">
-            {sobriety[0]?.current_streak ?? '—'}
+      {/* Colorful stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { icon: ClipboardList, label: 'Assessments', value: assessments.length, from: '#15803d', to: '#0d9488' },
+          { icon: Heart,         label: 'Avg Mood',    value: avgMood ?? '—',     from: '#e11d48', to: '#7c3aed' },
+          { icon: TrendingUp,    label: 'Day Streak',  value: sobriety[0]?.current_streak ?? '—', from: '#d97706', to: '#15803d' },
+          { icon: Calendar,      label: 'Sessions',    value: 0,                  from: '#2563eb', to: '#7c3aed' },
+        ].map(({ icon: Icon, label, value, from, to }) => (
+          <div key={label} className="rounded-2xl p-4 text-white shadow-sm" style={{ background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)` }}>
+            <Icon size={20} className="opacity-80 mb-2" />
+            <div className="text-2xl font-black">{value}</div>
+            <div className="text-xs text-white/70 mt-0.5">{label}</div>
           </div>
-          <div className="text-xs text-gray-500">Day Streak</div>
-        </div>
-        <div className="card text-center">
-          <Calendar size={24} className="text-blue-500 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-gray-900">0</div>
-          <div className="text-xs text-gray-500">Upcoming Sessions</div>
-        </div>
+        ))}
       </div>
 
       {/* Quick actions */}
       <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Link to="/assessments" className="card hover:border-primary-300 transition-colors group">
+          <Link to="/assessments" className="card hover:shadow-md transition-all group border-l-4 border-teal-500">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center group-hover:bg-primary-200 transition-colors">
-                <ClipboardList size={20} className="text-primary-700" />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #15803d, #0d9488)' }}>
+                <ClipboardList size={18} className="text-white" />
               </div>
               <div>
-                <div className="font-medium text-gray-900">Take Assessment</div>
+                <div className="font-semibold text-gray-900">Take Assessment</div>
                 <div className="text-xs text-gray-500">PHQ-9, AUDIT, PGSI & more</div>
               </div>
             </div>
           </Link>
 
-          <Link to="/professionals" className="card hover:border-primary-300 transition-colors group">
+          <Link to="/professionals" className="card hover:shadow-md transition-all group border-l-4 border-blue-500">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                <Users size={20} className="text-blue-700" />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}>
+                <Users size={18} className="text-white" />
               </div>
               <div>
-                <div className="font-medium text-gray-900">Find a Therapist</div>
+                <div className="font-semibold text-gray-900">Find a Therapist</div>
                 <div className="text-xs text-gray-500">Verified KMPDC professionals</div>
               </div>
             </div>

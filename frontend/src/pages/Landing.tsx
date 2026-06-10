@@ -12,7 +12,7 @@ const FEATURES = [
 ]
 
 const STATS = [
-  { value: 'KES 2,000', label: 'Per session' },
+  { value: 'Case by Case', label: 'Flexible session pricing' },
   { value: '3 Areas', label: 'Mental health, addiction & gambling' },
   { value: '5 Tools', label: 'WHO clinical assessments' },
   { value: '0 Meta', label: 'No WhatsApp or Facebook' },
@@ -21,7 +21,7 @@ const STATS = [
 const STEPS = [
   { step: '01', title: 'Take a Free Assessment', desc: 'Answer clinically-validated questions. Get your score and severity rating instantly — no sign-up needed.' },
   { step: '02', title: 'AI Matches You', desc: 'Based on your results, language, gender preference, and availability, AI recommends the best-fit therapist.' },
-  { step: '03', title: 'Book & Connect Privately', desc: 'Pay via M-Pesa. Join your encrypted Jitsi session. No one knows who you are unless you choose to share.' },
+  { step: '03', title: 'Book & Connect Privately', desc: 'Pay securely. Join your encrypted Jitsi session. No one knows who you are unless you choose to share.' },
 ]
 
 // Mock AI match cards shown in the AI slide
@@ -233,7 +233,7 @@ const MARQUEE_ITEMS = [
   { emoji: '🇰🇪', text: 'KMPDC Verified' },
   { emoji: '💬', text: 'Kiswahili Support' },
   { emoji: '📱', text: 'No WhatsApp Needed' },
-  { emoji: '💰', text: 'M-Pesa Payments' },
+  { emoji: '💳', text: 'Secure Payments' },
   { emoji: '🏥', text: 'WHO Clinical Tools' },
 ]
 
@@ -389,7 +389,7 @@ export default function Landing() {
               AI-powered matching with <strong className="text-white">KMPDC-verified therapists</strong> for depression, anxiety, alcohol, drug use, and gambling addiction.
             </p>
             <p className="text-slate-400 text-sm mb-6 md:mb-8">
-              No WhatsApp. No Meta. No phone number required. Private encrypted sessions from <strong className="text-white">KES 2,000</strong>.
+              No WhatsApp. No Meta. No phone number required. Private encrypted sessions with KMPDC-verified therapists.
             </p>
             <div className="flex gap-3 flex-wrap">
               <Link to="/signup" className="flex items-center gap-2 px-6 md:px-7 py-3 md:py-3.5 bg-orange-500 hover:bg-orange-400 rounded-xl font-bold text-base transition-colors shadow-lg shadow-orange-900/40">
@@ -583,10 +583,10 @@ export default function Landing() {
               </div>
               <h2 className="text-2xl md:text-3xl font-black mb-3">Join as a Therapist or Counselor</h2>
               <p className="text-slate-300 mb-5 leading-relaxed text-sm md:text-base">
-                KMPDC-licensed professionals earn <strong className="text-white">KES 2,000 per session</strong> (80% of KES 2,500). Paid directly to M-Pesa within 24 hours. Work from anywhere.
+                KMPDC-licensed professionals earn directly from sessions — at a rate you agree with each patient. Fast payouts within 24 hours. Work from anywhere.
               </p>
               <div className="grid grid-cols-2 gap-3 mb-6">
-                {['Set your own schedule', 'M-Pesa payouts in 24hrs', 'AI matches you with patients', 'Encrypted video sessions'].map(f => (
+                {['Set your own schedule', 'Payouts within 24hrs', 'AI matches you with patients', 'Encrypted video sessions'].map(f => (
                   <div key={f} className="flex items-center gap-2 text-sm text-slate-300">
                     <CheckCircle size={13} className="text-teal-400 flex-shrink-0" /> {f}
                   </div>
@@ -597,7 +597,7 @@ export default function Landing() {
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-3 text-center flex-shrink-0">
-              {[{ value: '80%', label: 'Your share' }, { value: '24hrs', label: 'M-Pesa payout' }, { value: 'KES 2,000', label: 'Per session' }, { value: 'KMPDC', label: 'Verified only' }].map(({ value, label }) => (
+              {[{ value: '80%', label: 'Your share' }, { value: '24hrs', label: 'Payout time' }, { value: 'Your Rate', label: 'You set the fee' }, { value: 'KMPDC', label: 'Verified only' }].map(({ value, label }) => (
                 <div key={label} className="bg-slate-800 border border-slate-700 rounded-2xl px-5 md:px-6 py-4">
                   <div className="text-orange-400 font-black text-xl">{value}</div>
                   <div className="text-slate-400 text-xs mt-1">{label}</div>
@@ -617,7 +617,7 @@ export default function Landing() {
             Give your team access to confidential therapy, addiction support, and wellness tools. Gambling and alcohol problems are costing Kenyan companies billions in lost productivity.
           </p>
           <div className="flex flex-wrap justify-center gap-3 mb-8">
-            {['Confidential for employees', 'Usage analytics for HR', 'M-Pesa billing', 'Scalable from 10 to 10,000 staff'].map(f => (
+            {['Confidential for employees', 'Usage analytics for HR', 'Flexible billing', 'Scalable from 10 to 10,000 staff'].map(f => (
               <div key={f} className="flex items-center gap-2 text-sm text-gray-600 bg-teal-50 border border-teal-100 px-3 py-2 rounded-lg">
                 <CheckCircle size={14} className="text-teal-600" /> {f}
               </div>

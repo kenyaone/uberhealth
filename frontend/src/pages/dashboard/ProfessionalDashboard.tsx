@@ -4,7 +4,7 @@ import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
 import {
   Calendar, DollarSign, Star, Clock, CheckCircle,
-  AlertCircle, Users, TrendingUp, Settings, ExternalLink
+  AlertCircle, Users, TrendingUp, Settings, PlayCircle
 } from 'lucide-react'
 
 interface Consultation {
@@ -206,9 +206,11 @@ export default function ProfessionalDashboard() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[c.status] ?? 'bg-gray-100 text-gray-600'}`}>
                     {c.status}
                   </span>
-                  <Link to={`/session/${c.id}`} className="flex items-center gap-1 text-xs text-primary-600 hover:underline">
-                    Join <ExternalLink size={11} />
-                  </Link>
+                  {['confirmed', 'in_progress'].includes(c.status) && (
+                    <Link to={`/consultations`} className="flex items-center gap-1 text-xs bg-blue-600 text-white px-2.5 py-1 rounded-lg hover:bg-blue-700 font-medium">
+                      <PlayCircle size={11} /> Go to sessions
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}

@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import {
   CheckCircle, XCircle, Clock, Users, Star,
   ChevronDown, ChevronUp, BarChart2, DollarSign, AlertCircle, RotateCcw, Video,
-  MessageSquare, Shield, Plus, Trash2, Edit3, Eye, Download
+  MessageSquare, Shield, Plus, Trash2, Edit3, Eye, Download, HandHeart, ShieldCheck
 } from 'lucide-react'
 
 interface Group {
@@ -46,7 +46,20 @@ interface Stats {
 }
 
 type TabType = 'pending' | 'verified' | 'rejected'
-type MainTab = 'professionals' | 'sessions' | 'groups' | 'moderation' | 'users'
+type MainTab = 'professionals' | 'sessions' | 'groups' | 'moderation' | 'users' | 'peer_mentors'
+
+interface PeerMentorRow {
+  id: number
+  user_id: number
+  display_name: string
+  username: string
+  bio: string
+  conditions_helped: string[]
+  years_in_recovery: number
+  is_active: boolean
+  is_verified: boolean
+  created_at: string
+}
 
 interface UserRow {
   id: number
@@ -93,6 +106,8 @@ export default function AdminDashboard() {
   const [usersSearch, setUsersSearch] = useState('')
   const [usersLoading, setUsersLoading] = useState(false)
   const [banningId, setBanningId]   = useState<number | null>(null)
+  const [peerMentors, setPeerMentors] = useState<PeerMentorRow[]>([])
+  const [approvingMentor, setApprovingMentor] = useState<number | null>(null)
   const [newGroup, setNewGroup] = useState({ name: '', description: '', category: 'depression', icon: '💬', is_active: true })
   const [showNewGroup, setShowNewGroup] = useState(false)
   const [savingGroup, setSavingGroup] = useState(false)
@@ -130,6 +145,9 @@ export default function AdminDashboard() {
       setUsersLoading(true)
       api.get('/admin/users').then(r => setUsersList(r.data.users ?? [])).catch(() => {}).finally(() => setUsersLoading(false))
     }
+    if (mainTab === 'peer_mentors') {
+      api.get('/admin/peer-mentors').then(r => setPeerMentors(r.data.mentors ?? [])).catch(() => {})
+    }
   }, [mainTab])
 
   const createGroup = async () => {
@@ -166,6 +184,15 @@ export default function AdminDashboard() {
     } catch (e: any) {
       alert(e.response?.data?.error ?? 'Failed to update user.')
     } finally { setBanningId(null) }
+  }
+
+  const approveMentor = async (id: number, approve: boolean) => {
+    setApprovingMentor(id)
+    try {
+      await api.put(`/admin/peer-mentors/${id}/approve`, { approve })
+      setPeerMentors(prev => prev.map(m => m.id === id ? { ...m, is_active: approve, is_verified: approve } : m))
+    } catch { alert('Failed to update mentor.') }
+    finally { setApprovingMentor(null) }
   }
 
   const hideMessage = async (groupId: number, msgId: number) => {
@@ -244,6 +271,7 @@ export default function AdminDashboard() {
           { key: 'groups',        icon: MessageSquare, label: 'Support Groups' },
           { key: 'moderation',    icon: Shield,        label: 'Moderation' },
           { key: 'users',         icon: Eye,           label: 'Users' },
+          { key: 'peer_mentors',  icon: HandHeart,     label: 'Peer Mentors' },
         ] as { key: MainTab; icon: any; label: string }[]).map(({ key, icon: Icon, label }) => (
           <button
             key={key}
@@ -562,6 +590,67 @@ export default function AdminDashboard() {
                       {banningId === u.id ? '…' : u.is_banned ? 'Unban' : 'Ban'}
                     </button>
                   )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── PEER MENTORS TAB ── */}
+      {mainTab === 'peer_mentors' && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <HandHeart size={18} className="text-rose-500" /> Peer Mentor Applications
+          </h2>
+          <p className="text-sm text-gray-500">Review and approve peer mentor applications before they appear publicly.</p>
+          {peerMentors.length === 0 ? (
+            <div className="card text-center py-10 text-gray-400">
+              <HandHeart size={36} className="mx-auto mb-2 opacity-20" />
+              No peer mentor applications yet.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {peerMentors.map(m => (
+                <div key={m.id} className={`card border-l-4 ${m.is_verified ? 'border-teal-400' : m.is_active ? 'border-green-400' : 'border-amber-400'}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="font-semibold text-gray-900">{m.display_name}</span>
+                        <span className="text-xs text-gray-400">@{m.username}</span>
+                        <span className="text-xs text-gray-400">{m.years_in_recovery} yr{m.years_in_recovery !== 1 ? 's' : ''} in recovery</span>
+                        {m.is_verified
+                          ? <span className="inline-flex items-center gap-1 text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded-full"><ShieldCheck size={10} /> Verified</span>
+                          : m.is_active
+                          ? <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">Active (unverified)</span>
+                          : <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">Pending Review</span>
+                        }
+                      </div>
+                      <p className="text-sm text-gray-700">{m.bio}</p>
+                      {m.conditions_helped?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {m.conditions_helped.map(c => (
+                            <span key={c} className="text-xs bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full">{c}</span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="text-xs text-gray-400 mt-1">Applied {new Date(m.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                    </div>
+                    <div className="flex flex-col gap-2 flex-shrink-0">
+                      {!m.is_verified && (
+                        <button onClick={() => approveMentor(m.id, true)} disabled={approvingMentor === m.id}
+                          className="flex items-center gap-1 text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg font-medium disabled:opacity-50">
+                          <CheckCircle size={12} /> Approve
+                        </button>
+                      )}
+                      {m.is_active && (
+                        <button onClick={() => approveMentor(m.id, false)} disabled={approvingMentor === m.id}
+                          className="flex items-center gap-1 text-xs bg-red-50 border border-red-300 text-red-700 hover:bg-red-100 px-3 py-1.5 rounded-lg font-medium disabled:opacity-50">
+                          <XCircle size={12} /> Revoke
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

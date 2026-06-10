@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
@@ -64,9 +64,11 @@ export default function JoinSession() {
   const [soapNotes, setSoapNotes] = useState('')
   const [soapLoading, setSoapLoading] = useState(false)
   const [videoMode, setVideoMode] = useState<'video' | 'audio'>('video')
-  const [cameraOff, setCameraOff] = useState(false)
+  const [cameraOff, setCameraOff] = useState(true)
   const [sessionPresence, setSessionPresence] = useState<PresenceEntry[]>([])
   const presenceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const jitsiContainerRef = useRef<HTMLDivElement>(null)
+  const jitsiApiRef = useRef<any>(null)
 
   // Poll session presence once the session is open in another tab
   useEffect(() => {
@@ -99,20 +101,64 @@ export default function JoinSession() {
       })
   }, [consultationId])
 
-  const handleJoin = () => {
+  const handleJoin = useCallback(async () => {
     if (!session) return
-    const name = encodeURIComponent(user?.display_name ?? 'User')
-    const config = [
-      `userInfo.displayName="${name}"`,
-      'config.lobby.enabled=false',          // prevents "conference has not started" waiting room
-      'config.prejoinPageEnabled=false',     // skip the Jitsi pre-join screen
-      'config.disableInviteFunctions=true',  // hide share-invite controls inside Jitsi
-      videoMode === 'audio' ? 'config.startAudioOnly=true' : '',
-      cameraOff && videoMode === 'video' ? 'config.startWithVideoMuted=true' : '',
-    ].filter(Boolean).join('&')
-    window.open(`${session.jitsi_url}#${config}`, '_blank')
     setPhase('joined')
-  }
+    // Allow DOM to render the jitsi container div before mounting
+    await new Promise(r => setTimeout(r, 120))
+
+    // Load external_api.js once
+    if (!(window as any).JitsiMeetExternalAPI) {
+      await new Promise<void>((resolve, reject) => {
+        const s = document.createElement('script')
+        s.src = 'https://meet.jit.si/external_api.js'
+        s.onload = () => resolve()
+        s.onerror = () => reject(new Error('Jitsi script failed to load'))
+        document.head.appendChild(s)
+      })
+    }
+
+    if (!jitsiContainerRef.current) return
+
+    jitsiApiRef.current?.dispose()
+
+    const JitsiAPI = (window as any).JitsiMeetExternalAPI
+    const api = new JitsiAPI('meet.jit.si', {
+      roomName: session.room,
+      width: '100%',
+      height: 520,
+      parentNode: jitsiContainerRef.current,
+      configOverwrite: {
+        prejoinPageEnabled: false,
+        hideLobbyButton: true,
+        enableLobbyChat: false,
+        disableDeepLinking: true,
+        startWithVideoMuted: cameraOff,
+        startAudioOnly: videoMode === 'audio',
+        disableInviteFunctions: true,
+        subject: 'Afya Yako Siri Yako — Private Session',
+        requireDisplayName: false,
+        toolbarButtons: ['microphone', 'camera', 'chat', 'raisehand', 'tileview', 'hangup'],
+      },
+      interfaceConfigOverwrite: {
+        SHOW_PROMOTIONAL_CLOSE_PAGE: false,
+        HIDE_INVITE_MORE_HEADER: true,
+        MOBILE_APP_PROMO: false,
+        DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
+        DEFAULT_BACKGROUND: '#0a5e2a',
+      },
+      userInfo: {
+        displayName: user?.display_name || 'User',
+        email: '',
+      },
+    })
+    jitsiApiRef.current = api
+  }, [session, cameraOff, videoMode, user])
+
+  // Clean up Jitsi on unmount
+  useEffect(() => {
+    return () => { jitsiApiRef.current?.dispose() }
+  }, [])
 
   const handleEndSession = async () => {
     if (!session) return
@@ -385,64 +431,30 @@ export default function JoinSession() {
         </div>
       )}
 
-      {/* Joined/Started state — session is open in another tab */}
+      {/* Embedded Jitsi video */}
       {!isCompleted && phase === 'joined' && (
-        <div className="card space-y-4">
-          <div className="text-center py-4">
-            <Video size={36} className="text-green-500 mx-auto mb-3" />
-            <p className="font-medium text-gray-900 mb-1">
-              {is_professional ? 'Session is live in another tab' : 'Session is open in another tab'}
-            </p>
-            <p className="text-sm text-gray-500 mb-4">
-              {is_professional
-                ? 'Come back here when done to save your SOAP notes and end the session.'
-                : 'Come back here when your session ends to complete the session notes and actions.'}
-            </p>
-            <button
-              onClick={handleJoin}
-              className="btn-secondary text-sm flex items-center gap-1 mx-auto"
-            >
-              <ExternalLink size={14} /> {is_professional ? 'Reopen Session' : 'Rejoin Session'}
-            </button>
-          </div>
-
-          {/* Live session presence */}
-          <div className="border-t border-gray-100 pt-3">
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              Who's in this session
-            </div>
-            {(() => {
-              const otherRole = is_professional ? 'user' : 'professional'
-              const otherLabel = is_professional ? 'Patient' : 'Therapist'
-              const others = sessionPresence.filter(p => p.role === otherRole)
-              const otherPresent = others.length > 0
-              const otherTyping = others.some(p => p.is_typing)
-
-              return (
-                <div className="flex items-center gap-3 text-sm">
-                  {otherPresent ? (
-                    <>
-                      <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
-                      <span className="text-gray-700">
-                        {others[0].display_name || otherLabel} is{' '}
-                        <span className="font-semibold text-green-700">in the session</span>
-                        {otherTyping && (
-                          <span className="ml-2 text-gray-400 italic text-xs">typing…</span>
-                        )}
-                      </span>
-                      <Wifi size={13} className="text-green-500 ml-auto" />
-                    </>
-                  ) : (
-                    <>
-                      <span className="w-2.5 h-2.5 rounded-full bg-gray-300 flex-shrink-0" />
-                      <span className="text-gray-400">Waiting for {otherLabel} to join…</span>
-                      <WifiOff size={13} className="text-gray-300 ml-auto" />
-                    </>
-                  )}
-                </div>
-              )
-            })()}
-          </div>
+        <div className="space-y-4">
+          <div
+            ref={jitsiContainerRef}
+            className="rounded-2xl overflow-hidden border border-gray-200 shadow-lg bg-gray-900"
+            style={{ minHeight: 520 }}
+          />
+          {/* Presence indicator below video */}
+          {(() => {
+            const otherRole = is_professional ? 'user' : 'professional'
+            const otherLabel = is_professional ? 'Patient' : 'Therapist'
+            const others = sessionPresence.filter(p => p.role === otherRole)
+            const otherPresent = others.length > 0
+            return (
+              <div className="flex items-center gap-2 text-xs text-gray-500 px-1">
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${otherPresent ? 'bg-green-400 animate-pulse' : 'bg-gray-300'}`} />
+                {otherPresent
+                  ? <><span className="font-medium text-green-700">{others[0].display_name || otherLabel}</span> is in the session<Wifi size={11} className="ml-auto text-green-400" /></>
+                  : <><span>Waiting for {otherLabel} to join…</span><WifiOff size={11} className="ml-auto text-gray-300" /></>
+                }
+              </div>
+            )
+          })()}
         </div>
       )}
 

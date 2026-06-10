@@ -317,6 +317,115 @@ class PaymentController extends Controller
     }
 
     // Patient views their own insurance claims
+    // ─── Paystack ──────────────────────────────────────────────────────────────
+
+    public function paystackInitialize(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'consultation_id' => 'required|string|exists:consultations,consultation_id',
+        ]);
+        if ($validator->fails()) return response()->json(['error' => $validator->errors()->first()], 422);
+
+        $user = auth('api')->user();
+        $consultation = Consultation::where('consultation_id', $request->consultation_id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$consultation) return response()->json(['error' => 'Consultation not found'], 404);
+        if ($consultation->status !== 'pending') return response()->json(['error' => 'Consultation already paid'], 422);
+
+        $secretKey = config('services.paystack.secret_key', env('PAYSTACK_SECRET_KEY', ''));
+        $email     = $user->email ?: "user{$user->id}@afyayako.com";
+        $reference = 'ps-' . $consultation->consultation_id . '-' . time();
+        $amountKobo = (int) round($consultation->amount * 100); // KES in smallest unit
+
+        $response = \Illuminate\Support\Facades\Http::withHeaders([
+            'Authorization' => "Bearer {$secretKey}",
+            'Content-Type'  => 'application/json',
+        ])->post('https://api.paystack.co/transaction/initialize', [
+            'email'     => $email,
+            'amount'    => $amountKobo,
+            'currency'  => 'KES',
+            'reference' => $reference,
+            'metadata'  => [
+                'consultation_id' => $consultation->consultation_id,
+                'platform'        => 'Afya Yako Siri Yako',
+            ],
+        ]);
+
+        if (!$response->successful()) {
+            Log::error('Paystack init failed', ['body' => $response->body()]);
+            return response()->json(['error' => 'Payment initialisation failed. Please try again.'], 500);
+        }
+
+        $data = $response->json('data');
+
+        // Store reference for verification
+        Payment::create([
+            'consultation_id'   => $consultation->id,
+            'amount'            => $consultation->amount,
+            'phone'             => null,
+            'mpesa_checkout_id' => $reference, // reuse field for paystack reference
+            'status'            => 'pending',
+        ]);
+
+        return response()->json([
+            'access_code'      => $data['access_code'] ?? null,
+            'authorization_url'=> $data['authorization_url'] ?? null,
+            'reference'        => $reference,
+        ]);
+    }
+
+    public function paystackVerify(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'reference'       => 'required|string',
+            'consultation_id' => 'required|string',
+        ]);
+        if ($validator->fails()) return response()->json(['error' => $validator->errors()->first()], 422);
+
+        $secretKey = config('services.paystack.secret_key', env('PAYSTACK_SECRET_KEY', ''));
+        $response  = \Illuminate\Support\Facades\Http::withHeaders([
+            'Authorization' => "Bearer {$secretKey}",
+        ])->get("https://api.paystack.co/transaction/verify/{$request->reference}");
+
+        if (!$response->successful()) {
+            return response()->json(['error' => 'Payment verification failed'], 500);
+        }
+
+        $data   = $response->json('data');
+        $status = $data['status'] ?? 'failed';
+
+        if ($status !== 'success') {
+            return response()->json(['error' => 'Payment not successful. Status: ' . $status], 422);
+        }
+
+        $user         = auth('api')->user();
+        $consultation = Consultation::where('consultation_id', $request->consultation_id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$consultation) return response()->json(['error' => 'Consultation not found'], 404);
+
+        $payment = Payment::where('consultation_id', $consultation->id)->first();
+        if ($payment) {
+            $payment->update(['status' => 'completed', 'completed_at' => now()]);
+        }
+
+        $consultation->update(['status' => 'confirmed']);
+
+        ProfessionalPayout::create([
+            'professional_id' => $consultation->professional_id,
+            'consultation_id' => $consultation->id,
+            'amount'          => $consultation->amount * (1 - self::COMMISSION_RATE),
+            'status'          => 'pending',
+        ]);
+
+        $consultation->professional->increment('total_sessions');
+
+        return response()->json(['message' => 'Payment confirmed', 'consultation_id' => $request->consultation_id]);
+    }
+
     public function myClaims()
     {
         $user   = auth('api')->user();

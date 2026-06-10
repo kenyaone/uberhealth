@@ -34,7 +34,7 @@ class CaseloadController extends Controller
                 $moods = MoodLog::where('user_id', $u->id)
                     ->where('logged_at', '>=', now()->subDays(7))
                     ->orderBy('logged_at')
-                    ->pluck('mood')->toArray();
+                    ->pluck('mood_score')->toArray();
                 $avgMood = count($moods) ? round(array_sum($moods) / count($moods), 1) : null;
 
                 // Next session
@@ -90,7 +90,7 @@ class CaseloadController extends Controller
 
         $moods = MoodLog::where('user_id', $patientId)
             ->orderByDesc('logged_at')->limit(30)
-            ->get(['mood', 'note', 'logged_at']);
+            ->get(['mood_score', 'note', 'logged_at']);
 
         $goals = RecoveryGoal::where('user_id', $patientId)->get();
 

@@ -51,6 +51,7 @@ import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
 import PeerMentors from './pages/community/PeerMentors'
 import MyClaims from './pages/consultation/MyClaims'
+import InstallPwa from './components/InstallPwa'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -67,6 +68,7 @@ export default function App() {
     <ThemeProvider>
     <I18nProvider>
     <BrowserRouter>
+      <InstallPwa />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/faq" element={<FAQ />} />

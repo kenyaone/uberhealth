@@ -346,22 +346,39 @@ export default function TakeAssessment() {
       </div>
 
       <div className="card">
-        <h2 className="text-lg font-medium text-gray-900 mb-6">{question.text}</h2>
-        <div className="space-y-2">
+        <h2 className="text-xl font-semibold text-gray-900 mb-1 leading-snug">{question.text}</h2>
+        <p className="text-xs text-gray-400 mb-5">Tap the option that best describes your experience</p>
+        <div className="space-y-2.5">
           {scale.map((label, i) => {
-            const val = i
-            const isSelected = responses[question.key] === val
+            const isSelected = responses[question.key] === i
+            const colors = [
+              'border-emerald-400 bg-emerald-50 text-emerald-800',
+              'border-amber-400 bg-amber-50 text-amber-800',
+              'border-orange-400 bg-orange-50 text-orange-800',
+              'border-red-400 bg-red-50 text-red-800',
+            ]
+            const nums = ['0', '1', '2', '3']
+            const numColors = [
+              'bg-emerald-500 text-white',
+              'bg-amber-500 text-white',
+              'bg-orange-500 text-white',
+              'bg-red-500 text-white',
+            ]
             return (
               <button
                 key={i}
-                onClick={() => handleAnswer(val)}
-                className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-all text-sm ${
+                onClick={() => handleAnswer(i)}
+                className={`w-full text-left px-4 py-3.5 rounded-xl border-2 transition-all flex items-center gap-4 ${
                   isSelected
-                    ? 'border-primary-600 bg-primary-50 text-primary-800 font-medium'
-                    : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
+                    ? colors[i] + ' shadow-sm scale-[1.01]'
+                    : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 hover:scale-[1.005]'
                 }`}
               >
-                {label}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${isSelected ? numColors[i] : 'bg-gray-100 text-gray-500'}`}>
+                  {i < nums.length ? nums[i] : i}
+                </div>
+                <span className={`text-sm font-medium leading-snug ${isSelected ? '' : 'text-gray-700'}`}>{label}</span>
+                {isSelected && <span className="ml-auto text-lg">✓</span>}
               </button>
             )
           })}

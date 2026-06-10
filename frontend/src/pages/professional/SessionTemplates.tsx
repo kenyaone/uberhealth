@@ -16,6 +16,45 @@ interface Template {
 const CATEGORIES = ['general', 'intake', 'follow-up', 'crisis', 'discharge', 'group']
 const EMPTY: Partial<Template> = { name: '', category: 'general', subjective: '', objective: '', assessment: '', plan: '', notes: '' }
 
+const STARTER_TEMPLATES: Partial<Template>[] = [
+  {
+    name: 'Initial Intake Assessment',
+    category: 'intake',
+    subjective: "Patient presents for initial assessment. Chief complaint: [describe in patient's words]. History of presenting illness: [onset, duration, severity]. Past psychiatric history: [previous diagnoses, hospitalisations, medications]. Social history: [living situation, employment, support systems]. Substance use history: [type, frequency, last use, previous treatment].",
+    objective: "Patient appears [calm/distressed/cooperative/guarded]. Mood: [depressed/anxious/neutral]. Affect: [flat/restricted/full]. Thought process: [organised/disorganised]. Risk assessment: [low/medium/high risk for self-harm or harm to others].",
+    assessment: "Provisional diagnosis: [ICD-10 code and description]. Severity: [mild/moderate/severe]. Risk level: [low/medium/high]. Complicating factors: [co-morbidities, psychosocial stressors].",
+    plan: "1. Commence [therapy type] — [frequency] sessions.\n2. Safety plan discussed and documented.\n3. Next session in [1/2] weeks.\n4. Crisis resources shared: Befrienders Kenya 0800 723 253, NACADA 1192.",
+    notes: 'Informed consent obtained. Confidentiality limits explained.',
+  },
+  {
+    name: 'Regular Follow-up',
+    category: 'follow-up',
+    subjective: "Patient returns for follow-up. Current mood rated [x/10]. Since last session: [describe significant events, changes, homework review]. Sleep: [hours, quality]. Appetite: [good/poor]. Substance use since last session: [nil/specify].",
+    objective: "General presentation: [improved/unchanged/deteriorated]. Engagement: [good/moderate/poor]. Homework completed: [yes/partial/no]. Risk update: [no new concerns / describe any new risks].",
+    assessment: "Progress towards treatment goals: [on track/slow/no progress]. Current clinical impression: [describe]. Risk: [unchanged/increased/decreased].",
+    plan: "1. Continue current treatment plan.\n2. Next session: [date/timeframe].\n3. Homework for next session: [describe].",
+    notes: '',
+  },
+  {
+    name: 'Crisis Intervention',
+    category: 'crisis',
+    subjective: "Patient presenting in crisis. Precipitating event: [describe]. Suicidal ideation: [none/passive/active with plan/active with intent]. Self-harm: [none/recent]. Protective factors: [reasons for living, social support]. Risk factors: [isolation, means access, previous attempts].",
+    objective: "Risk level: [low/medium/high/very high]. Means restriction discussed: [yes/no]. Safety plan reviewed or created: [yes/no]. Emergency contact identified: [name/number if documented].",
+    assessment: "Crisis level: [acute/sub-acute]. Immediate risk: [low/medium/high]. Hospitalisation required: [no/voluntary/involuntary].",
+    plan: "1. Safety plan updated/created and copy given to patient.\n2. Crisis hotlines: Befrienders Kenya 0800 723 253, Emergency 999.\n3. Emergency contact notified [with consent/without consent — duty to warn].\n4. Follow-up contact within [24hrs/48hrs].",
+    notes: 'Mandatory reporting obligations considered.',
+  },
+  {
+    name: 'Discharge Summary',
+    category: 'discharge',
+    subjective: "Patient completed treatment programme. Duration: [x sessions over x months]. Initial presenting complaint: [brief summary]. Patient-reported outcome: [significant improvement/improvement/partial improvement].",
+    objective: "Final assessment scores: [PHQ-9: x, GAD-7: x]. Overall improvement: [x% reduction in symptoms]. Risk at discharge: [low/nil active concerns].",
+    assessment: "Treatment goals achieved: [fully/partially]. Relapse risk: [low/moderate/high]. Protective factors at discharge: [social support, coping skills, ongoing care].",
+    plan: "1. Discharge from active treatment — goals achieved.\n2. Relapse prevention plan discussed.\n3. Open-door policy: patient can re-refer if symptoms recur.\n4. Onward referral to: [support group/GP/community services].",
+    notes: '',
+  },
+]
+
 export default function SessionTemplates() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
@@ -119,9 +158,36 @@ export default function SessionTemplates() {
       )}
 
       {templates.length === 0 && (
-        <div className="card text-center py-12 text-gray-400">
-          <FileText size={40} className="mx-auto mb-3 opacity-20" />
-          <p>No templates yet. Create your first SOAP note template.</p>
+        <div className="space-y-4">
+          <div className="card text-center py-8 text-gray-400">
+            <FileText size={36} className="mx-auto mb-3 opacity-20" />
+            <p className="font-medium text-gray-600">No templates yet.</p>
+            <p className="text-sm mt-1">Pick a starter below or create your own.</p>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Starter Templates — Click to add</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {STARTER_TEMPLATES.map(t => (
+                <button
+                  key={t.name}
+                  onClick={() => setEditing({ ...t })}
+                  className="text-left card hover:border-orange-300 hover:shadow-md transition-all group p-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-orange-100 transition-colors">
+                      <FileText size={15} className="text-orange-500" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800 text-sm">{t.name}</p>
+                      <span className="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full">{t.category}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2 line-clamp-2">{t.subjective}</p>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

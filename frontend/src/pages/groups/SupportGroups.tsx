@@ -68,6 +68,9 @@ export default function SupportGroups() {
         <p className="text-gray-500 mt-1 text-sm">
           Anonymous peer support. Your identity is protected — you choose a random alias when joining.
         </p>
+        <p className="text-xs text-gray-400 mt-1">
+          Groups are created and moderated by our clinical team. New groups are added regularly.
+        </p>
       </div>
 
       {myGroups.length > 0 && (

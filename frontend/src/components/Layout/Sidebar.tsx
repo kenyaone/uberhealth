@@ -68,41 +68,50 @@ export default function Sidebar() {
   const links = isAdmin ? adminLinks : isProfessional ? professionalLinks : userLinksWithPricing
 
   return (
-    <aside className="w-64 bg-primary-900 text-white flex flex-col">
-      <div className="p-5 border-b border-primary-800">
+    <aside className="w-64 flex flex-col" style={{ background: 'linear-gradient(180deg, #0a5e2a 0%, #0f4d48 60%, #0a3d38 100%)' }}>
+      <div className="p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="bg-accent-600 rounded-lg p-2">
-            <Leaf size={20} className="text-white" />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #22c55e, #14b8a6)' }}>
+            <Leaf size={18} className="text-white" />
           </div>
           <div>
-            <div className="font-bold text-base leading-tight">Afya Yako Siri Yako</div>
-            <div className="text-primary-300 text-xs">Your Health, Your Secret</div>
+            <div className="font-bold text-sm text-white leading-tight">Afya Yako Siri Yako</div>
+            <div className="text-white/50 text-xs">Your Health, Your Secret</div>
           </div>
         </div>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {links.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 isActive
-                  ? 'bg-primary-700 text-white'
-                  : 'text-primary-200 hover:bg-primary-800 hover:text-white'
+                  ? 'bg-white/15 text-white shadow-sm'
+                  : 'text-white/60 hover:bg-white/10 hover:text-white'
               }`
             }
           >
-            <Icon size={18} />
-            {label}
+            {({ isActive }) => (
+              <>
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                  isActive ? 'bg-teal-500 shadow-sm' : 'bg-white/10'
+                }`}>
+                  <Icon size={15} />
+                </div>
+                <span className="truncate">{label}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
 
-      <div className="p-4 border-t border-primary-800">
-        <div className="text-xs text-primary-400">
-          🔒 Your data is private & encrypted
+      <div className="p-4 border-t border-white/10">
+        <div className="text-xs text-white/40 flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block animate-pulse" />
+          End-to-end encrypted
         </div>
       </div>
     </aside>

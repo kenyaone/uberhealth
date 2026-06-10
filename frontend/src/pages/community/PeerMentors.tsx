@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../../api/axios'
-import { Heart, Users, Plus, CheckCircle, Loader2, HandHeart } from 'lucide-react'
+import { Heart, Users, Plus, CheckCircle, Loader2, HandHeart, ShieldCheck, Clock } from 'lucide-react'
 
 interface Mentor {
   id: number
@@ -9,6 +9,7 @@ interface Mentor {
   bio: string
   conditions_helped: string[]
   years_in_recovery: number
+  is_verified: boolean
 }
 
 interface MyProfile {
@@ -17,6 +18,7 @@ interface MyProfile {
   conditions_helped: string[]
   years_in_recovery: number
   is_active: boolean
+  is_verified: boolean
 }
 
 const CONDITIONS = ['depression', 'anxiety', 'alcohol', 'substance use', 'gambling', 'trauma', 'grief', 'relationships']
@@ -100,14 +102,27 @@ export default function PeerMentors() {
       </div>
 
       {/* My mentor status */}
-      {myProfile?.is_active && (
-        <div className="card bg-rose-50 border-rose-200">
+      {myProfile && (
+        <div className={`card border ${myProfile.is_active ? 'bg-rose-50 border-rose-200' : 'bg-amber-50 border-amber-200'}`}>
           <div className="flex items-center gap-2">
-            <CheckCircle size={16} className="text-rose-500" />
-            <p className="text-sm font-semibold text-rose-800">You're an active peer mentor</p>
+            {myProfile.is_active
+              ? <CheckCircle size={16} className="text-rose-500" />
+              : <Clock size={16} className="text-amber-500" />
+            }
+            <p className={`text-sm font-semibold ${myProfile.is_active ? 'text-rose-800' : 'text-amber-800'}`}>
+              {myProfile.is_active
+                ? myProfile.is_verified ? '✅ Verified Peer Mentor' : 'Active Peer Mentor'
+                : 'Application under review — pending admin approval'}
+            </p>
           </div>
-          <p className="text-xs text-rose-600 mt-1">Others can request to connect with you. You'll be notified in-app.</p>
-          <button onClick={() => setShowApply(true)} className="text-xs text-rose-600 hover:underline mt-2">Edit profile</button>
+          <p className={`text-xs mt-1 ${myProfile.is_active ? 'text-rose-600' : 'text-amber-600'}`}>
+            {myProfile.is_active
+              ? 'Others can request to connect with you. You will be notified in-app.'
+              : 'Our team reviews all applications within 24 hours for safety. You will be notified once approved.'}
+          </p>
+          {myProfile.is_active && (
+            <button onClick={() => setShowApply(true)} className="text-xs text-rose-600 hover:underline mt-2">Edit profile</button>
+          )}
         </div>
       )}
 
@@ -170,6 +185,11 @@ export default function PeerMentors() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-gray-900 text-sm">{m.display_name}</span>
+                  {m.is_verified && (
+                    <span className="inline-flex items-center gap-1 text-xs bg-teal-50 text-teal-700 border border-teal-200 px-1.5 py-0.5 rounded-full font-medium">
+                      <ShieldCheck size={10} /> Verified
+                    </span>
+                  )}
                   <span className="text-xs text-gray-400">{m.years_in_recovery} yr{m.years_in_recovery !== 1 ? 's' : ''} in recovery</span>
                 </div>
                 <p className="text-sm text-gray-600 mt-1 leading-snug line-clamp-2">{m.bio}</p>

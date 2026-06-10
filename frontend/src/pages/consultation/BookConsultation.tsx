@@ -1,19 +1,19 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import api from '../../api/axios'
+import { useAuthStore } from '../../store/authStore'
 import type { Professional } from '../../types'
-import { Shield, Phone, CheckCircle, Loader2, Clock, Video, CreditCard, Heart } from 'lucide-react'
+import { Shield, CheckCircle, Loader2, Clock, Video, CreditCard, Heart } from 'lucide-react'
 
-type Step = 'details' | 'paying' | 'polling' | 'success' | 'failed' | 'payment_retry' | 'insurance_success'
-type PayMethod = 'mpesa' | 'insurance'
+type Step = 'details' | 'paying' | 'success' | 'failed' | 'insurance_success'
+type PayMethod = 'paystack' | 'insurance'
 
 interface BookForm {
   scheduled_at: string
   duration_minutes: number
   share_assessments: boolean
   share_mood_logs: boolean
-  phone: string
 }
 
 interface InsuranceForm {
@@ -37,6 +37,7 @@ const INSURANCE_PROVIDERS = [
 ]
 
 export default function BookConsultation() {
+  const user = useAuthStore(s => s.user)
   const { professionalId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
@@ -48,13 +49,8 @@ export default function BookConsultation() {
   const [amount, setAmount] = useState(0)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [payMethod, setPayMethod] = useState<PayMethod>('mpesa')
+  const [payMethod, setPayMethod] = useState<PayMethod>('paystack')
   const [claimRef, setClaimRef] = useState('')
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pollCount = useRef(0)
-
-  const [retryPhone, setRetryPhone] = useState('')
-  const [retryLoading, setRetryLoading] = useState(false)
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<BookForm>({
     defaultValues: { duration_minutes: 60, share_assessments: false, share_mood_logs: false }
@@ -66,7 +62,6 @@ export default function BookConsultation() {
 
   useEffect(() => {
     api.get(`/professionals/${professionalId}`).then(r => setPro(r.data.professional ?? r.data))
-    return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [professionalId])
 
   const computedAmount = pro ? Number(pro.rate_per_hour) * (Number(duration) / 60) : 0
@@ -86,7 +81,7 @@ export default function BookConsultation() {
     return bookRes.data.consultation
   }
 
-  const onSubmitMpesa = async (data: BookForm) => {
+  const onSubmitPaystack = async (data: BookForm) => {
     setLoading(true)
     setError('')
     try {
@@ -94,15 +89,43 @@ export default function BookConsultation() {
       setConsultationId(c.consultation_id)
       setNumericId(c.id)
       setAmount(c.amount)
-      setStep('paying')
-      try {
-        await api.post('/payments/initiate', { consultation_id: c.consultation_id, phone: data.phone })
-        setStep('polling')
-        startPolling(c.id)
-      } catch (payErr: any) {
-        setError(payErr.response?.data?.error || 'M-Pesa prompt could not be sent.')
-        setStep('payment_retry')
+
+      // Initialize Paystack transaction on backend
+      const initRes = await api.post('/payments/paystack/initialize', {
+        consultation_id: c.consultation_id,
+      })
+      const { access_code } = initRes.data
+
+      // Load Paystack inline.js if needed
+      if (!(window as any).PaystackPop) {
+        await new Promise<void>((resolve) => {
+          const s = document.createElement('script')
+          s.src = 'https://js.paystack.co/v1/inline.js'
+          s.onload = () => resolve()
+          document.head.appendChild(s)
+        })
       }
+
+      const handler = (window as any).PaystackPop.setup({
+        key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder',
+        email: (user as any)?.email || `user@afyayako.com`,
+        access_code,
+        ref: `ps-${c.consultation_id}-${Date.now()}`,
+        currency: 'KES',
+        callback: async (response: { reference: string }) => {
+          try {
+            await api.post('/payments/paystack/verify', { reference: response.reference, consultation_id: c.consultation_id })
+            setStep('success')
+          } catch {
+            setStep('failed')
+          }
+        },
+        onClose: () => {
+          setLoading(false)
+          setStep('details')
+        },
+      })
+      handler.openIframe()
     } catch (err: any) {
       setError(err.response?.data?.error || 'Booking failed. Please try again.')
       setStep('details')
@@ -111,7 +134,6 @@ export default function BookConsultation() {
     }
   }
 
-  // We need session details for insurance submission — store them temporarily
   const [pendingBookData, setPendingBookData] = useState<BookForm | null>(null)
 
   const onSessionDetailsForInsurance = (data: BookForm) => {
@@ -148,73 +170,7 @@ export default function BookConsultation() {
     }
   }
 
-  const startPolling = (id: number) => {
-    pollCount.current = 0
-    pollRef.current = setInterval(async () => {
-      pollCount.current += 1
-      if (pollCount.current > 20) { clearInterval(pollRef.current!); setStep('failed'); return }
-      try {
-        const r = await api.get(`/consultations/${id}`)
-        const status = r.data.consultation?.status ?? r.data.status
-        if (status === 'confirmed') { clearInterval(pollRef.current!); setStep('success') }
-        else if (status === 'cancelled') { clearInterval(pollRef.current!); setStep('failed') }
-      } catch {}
-    }, 4000)
-  }
-
-  const retryPayment = async () => {
-    if (!consultationId || !numericId) return
-    setRetryLoading(true)
-    setError('')
-    try {
-      await api.post('/payments/initiate', { consultation_id: consultationId, phone: retryPhone })
-      setStep('polling')
-      startPolling(numericId)
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'M-Pesa prompt could not be sent.')
-    } finally {
-      setRetryLoading(false)
-    }
-  }
-
   if (!pro) return <div className="text-center py-10 text-gray-400">Loading…</div>
-
-  if (step === 'payment_retry') {
-    return (
-      <div className="max-w-lg mx-auto mt-10 card space-y-5">
-        <div className="text-center">
-          <CheckCircle size={40} className="text-green-500 mx-auto mb-3" />
-          <h2 className="text-xl font-bold text-gray-900 mb-1">Session Booked!</h2>
-          <p className="text-gray-500 text-sm">Session ID: <strong>{consultationId}</strong></p>
-          <p className="text-gray-500 text-sm mt-1">Now send the M-Pesa payment to confirm.</p>
-        </div>
-        {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">M-Pesa Phone Number</label>
-          <input value={retryPhone} onChange={e => setRetryPhone(e.target.value)} className="input-field" placeholder="0712345678" />
-        </div>
-        <div className="bg-gray-50 rounded-lg p-3 text-sm flex justify-between font-bold text-gray-900">
-          <span>Total</span><span>KES {amount.toLocaleString()}</span>
-        </div>
-        <button onClick={retryPayment} disabled={!retryPhone || retryLoading} className="btn-primary w-full py-3">
-          {retryLoading ? <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" />Sending…</span> : 'Send M-Pesa Prompt'}
-        </button>
-        <button onClick={() => navigate('/consultations')} className="btn-secondary w-full text-sm">View My Sessions</button>
-      </div>
-    )
-  }
-
-  if (step === 'polling') {
-    return (
-      <div className="max-w-lg mx-auto mt-16 card text-center py-12">
-        <Loader2 size={48} className="text-primary-600 mx-auto mb-4 animate-spin" />
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Waiting for Payment</h2>
-        <p className="text-gray-600 mb-1">An M-Pesa STK Push has been sent to your phone.</p>
-        <p className="text-gray-500 text-sm">Enter your M-Pesa PIN to confirm payment of <strong>KES {amount.toLocaleString()}</strong>.</p>
-        <p className="text-xs text-gray-400 mt-4">Checking status… ({pollCount.current * 4}s elapsed)</p>
-      </div>
-    )
-  }
 
   if (step === 'success') {
     return (
@@ -317,19 +273,19 @@ export default function BookConsultation() {
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
-            onClick={() => setPayMethod('mpesa')}
+            onClick={() => setPayMethod('paystack')}
             className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
-              payMethod === 'mpesa'
-                ? 'border-teal-500 bg-teal-50'
+              payMethod === 'paystack'
+                ? 'border-blue-500 bg-blue-50'
                 : 'border-gray-200 bg-white hover:border-gray-300'
             }`}
           >
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${payMethod === 'mpesa' ? 'bg-teal-600' : 'bg-gray-100'}`}>
-              <Phone size={16} className={payMethod === 'mpesa' ? 'text-white' : 'text-gray-500'} />
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${payMethod === 'paystack' ? 'bg-blue-600' : 'bg-gray-100'}`}>
+              <CreditCard size={16} className={payMethod === 'paystack' ? 'text-white' : 'text-gray-500'} />
             </div>
             <div>
-              <div className={`text-sm font-semibold ${payMethod === 'mpesa' ? 'text-teal-900' : 'text-gray-700'}`}>M-Pesa</div>
-              <div className="text-xs text-gray-400">STK Push</div>
+              <div className={`text-sm font-semibold ${payMethod === 'paystack' ? 'text-blue-900' : 'text-gray-700'}`}>Paystack</div>
+              <div className="text-xs text-gray-400">Card · M-Pesa · Bank</div>
             </div>
           </button>
 
@@ -353,9 +309,9 @@ export default function BookConsultation() {
         </div>
       </div>
 
-      {payMethod === 'mpesa' ? (
-        /* ── M-PESA FLOW ── */
-        <form onSubmit={handleSubmit(onSubmitMpesa)} className="space-y-5">
+      {payMethod === 'paystack' ? (
+        /* ── PAYSTACK FLOW ── */
+        <form onSubmit={handleSubmit(onSubmitPaystack)} className="space-y-5">
           <div className="card space-y-4">
             <h2 className="font-semibold text-gray-900">Session Details</h2>
             <div>
@@ -371,9 +327,9 @@ export default function BookConsultation() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
               <select {...register('duration_minutes', { valueAsNumber: true })} className="input-field">
-                <option value={30}>30 minutes — KES {Math.round(Number(pro.rate_per_hour) * 0.5).toLocaleString()}</option>
-                <option value={60}>60 minutes — KES {Number(pro.rate_per_hour).toLocaleString()} (recommended)</option>
-                <option value={90}>90 minutes — KES {Math.round(Number(pro.rate_per_hour) * 1.5).toLocaleString()}</option>
+                <option value={30}>30 minutes</option>
+                <option value={60}>60 minutes (recommended)</option>
+                <option value={90}>90 minutes</option>
               </select>
             </div>
           </div>
@@ -395,35 +351,26 @@ export default function BookConsultation() {
           </div>
 
           <div className="card space-y-3">
-            <h2 className="font-semibold text-gray-900">M-Pesa Payment</h2>
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+              <CreditCard size={16} className="text-blue-600" /> Payment via Paystack
+            </h2>
             <div className="flex items-start gap-2 text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
               <Shield size={14} className="flex-shrink-0 mt-0.5 text-blue-600" />
-              <span>Your phone number is used only to send the M-Pesa prompt and is not stored in your profile.</span>
+              <span>Secure payment via Paystack. Choose M-Pesa, Visa/Mastercard, or bank transfer at checkout.</span>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                <Phone size={13} className="inline mr-1" />M-Pesa Phone Number
-              </label>
-              <input
-                {...register('phone', {
-                  required: 'Phone number required for payment',
-                  pattern: { value: /^(0[17]\d{8}|2547\d{8}|2541\d{8})$/, message: 'Enter a valid Kenyan number e.g. 0712345678' }
-                })}
-                className="input-field"
-                placeholder="0712345678"
-              />
-              {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3 space-y-1.5 text-sm">
-              <div className="flex justify-between text-gray-600"><span>Session ({duration} min)</span><span>KES {computedAmount.toLocaleString()}</span></div>
-              <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 pt-1.5"><span>Total to pay</span><span>KES {computedAmount.toLocaleString()}</span></div>
+            <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">Therapist's rate</span>
+                <span className="font-bold text-gray-900">KES {Number(pro.rate_per_hour).toLocaleString()}/hr</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">Final session fee is agreed with your therapist and confirmed at checkout.</p>
             </div>
           </div>
 
           <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base">
             {loading
               ? <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /> Processing…</span>
-              : `Pay KES ${computedAmount.toLocaleString()} via M-Pesa`
+              : 'Book & Pay with Paystack'
             }
           </button>
         </form>

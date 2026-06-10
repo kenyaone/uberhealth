@@ -127,6 +127,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/payments/initiate', [PaymentController::class, 'initiate']);
     Route::post('/payments/insurance-claim', [PaymentController::class, 'insuranceClaim']);
     Route::post('/payments/subscription/initiate', [PaymentController::class, 'subscriptionInitiate']);
+    Route::post('/payments/paystack/initialize', [PaymentController::class, 'paystackInitialize']);
+    Route::post('/payments/paystack/verify', [PaymentController::class, 'paystackVerify']);
 
     // Crisis
     Route::post('/crisis/report', [CrisisController::class, 'report']);
@@ -279,5 +281,8 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/users', [AdminController::class, 'listUsers']);
         Route::put('/users/{id}/ban', [AdminController::class, 'banUser']);
         Route::put('/users/{id}/unban', [AdminController::class, 'unbanUser']);
+        // Peer mentor approvals
+        Route::get('/peer-mentors', [PeerMentorController::class, 'adminList']);
+        Route::put('/peer-mentors/{id}/approve', [PeerMentorController::class, 'adminApprove']);
     });
 });
