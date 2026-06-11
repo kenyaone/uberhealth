@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Download, X } from 'lucide-react'
+import { X } from 'lucide-react'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -7,52 +7,67 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function InstallPwa() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [dismissed, setDismissed] = useState(() => !!localStorage.getItem('pwa_install_dismissed'))
+  const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [dismissed, setDismissed] = useState(false)
+  const [isIos, setIsIos] = useState(false)
+  const [isStandalone, setIsStandalone] = useState(false)
 
   useEffect(() => {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+      || (navigator as any).standalone === true
+    setIsStandalone(standalone)
+
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window as any).MSStream
+    setIsIos(ios)
+
     const handler = (e: Event) => {
       e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
+      setPrompt(e as BeforeInstallPromptEvent)
     }
     window.addEventListener('beforeinstallprompt', handler)
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
-  if (!deferredPrompt || dismissed) return null
+  if (isStandalone || dismissed) return null
+  if (!prompt && !isIos) return null
+  if (localStorage.getItem('pwa_install_dismissed')) return null
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return
-    await deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
-    if (outcome === 'accepted') setDeferredPrompt(null)
+    if (!prompt) return
+    await prompt.prompt()
+    const { outcome } = await prompt.userChoice
+    if (outcome === 'accepted') setDismissed(true)
   }
 
   const handleDismiss = () => {
-    setDismissed(true)
     localStorage.setItem('pwa_install_dismissed', '1')
+    setDismissed(true)
   }
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:w-80 z-50 bg-white border border-gray-200 rounded-2xl shadow-xl p-4 flex items-center gap-3">
-      <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #15803d, #0d9488)' }}>
-        <Download size={18} className="text-white" />
-      </div>
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-700 px-4 py-3 flex items-center gap-3 shadow-2xl">
+      <img src="/icon-192.png" alt="" className="w-10 h-10 rounded-xl flex-shrink-0" />
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-gray-900 text-sm">Install Afya Yako</p>
-        <p className="text-xs text-gray-500">Add to home screen for faster access</p>
+        <p className="text-white text-sm font-semibold leading-tight">Install Afya Yako</p>
+        {isIos ? (
+          <p className="text-slate-400 text-xs">
+            Tap <strong className="text-slate-300">Share</strong> then <strong className="text-slate-300">Add to Home Screen</strong>
+          </p>
+        ) : (
+          <p className="text-slate-400 text-xs">Works offline · Faster access · No app store needed</p>
+        )}
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      {!isIos && (
         <button
           onClick={handleInstall}
-          className="text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
+          className="bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors flex-shrink-0"
         >
           Install
         </button>
-        <button onClick={handleDismiss} className="text-gray-400 hover:text-gray-600">
-          <X size={16} />
-        </button>
-      </div>
+      )}
+      <button onClick={handleDismiss} className="text-slate-400 hover:text-white flex-shrink-0" aria-label="Dismiss">
+        <X size={18} />
+      </button>
     </div>
   )
 }
