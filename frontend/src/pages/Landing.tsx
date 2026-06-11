@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { Shield, Video, Heart, Star, Phone, Brain, Lock, Users, CheckCircle, Sparkles, Activity, Award, ArrowRight, BookOpen, Zap, ChevronLeft, ChevronRight } from 'lucide-react'
+import api from '../api/axios'
 
 const FEATURES = [
   { icon: Sparkles, title: 'AI-Powered Matching', desc: 'Pairs you with the right therapist based on your condition, language, and gender — in seconds.' },
@@ -346,10 +347,13 @@ export default function Landing() {
   const [onlineCount, setOnlineCount] = useState(0)
 
   useEffect(() => {
-    fetch('/api/presence/professionals')
-      .then(r => r.json())
-      .then(d => setOnlineCount((d.online_user_ids ?? []).length))
-      .catch(() => {})
+    const fetchCount = () =>
+      api.get('/presence/professionals')
+        .then(r => setOnlineCount((r.data.online_user_ids ?? []).length))
+        .catch(() => {})
+    fetchCount()
+    const poll = setInterval(fetchCount, 30_000)
+    return () => clearInterval(poll)
   }, [])
 
   return (
