@@ -261,17 +261,29 @@ export default function AdminDashboard() {
           <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
           <p className="text-gray-500 text-sm mt-1">Manage professional verifications and platform metrics.</p>
         </div>
-        <button
-          onClick={() => {
-            const from = new Date(); from.setMonth(from.getMonth() - 3)
-            const fromStr = from.toISOString().split('T')[0]
-            const toStr = new Date().toISOString().split('T')[0]
-            window.location.href = `https://api.uberhealth.co.ke/api/admin/sha-report?from=${fromStr}&to=${toStr}`
-          }}
-          className="btn-secondary flex items-center gap-2 text-sm"
-        >
-          <Download size={14} /> SHA Report (CSV)
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              const from = new Date(); from.setMonth(from.getMonth() - 3)
+              window.location.href = `https://api.uberhealth.co.ke/api/admin/sha-report?from=${from.toISOString().split('T')[0]}&to=${new Date().toISOString().split('T')[0]}`
+            }}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <Download size={14} /> SHA Report
+          </button>
+          <button
+            onClick={() => { window.location.href = 'https://api.uberhealth.co.ke/api/admin/export/sessions' }}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <Download size={14} /> Sessions CSV
+          </button>
+          <button
+            onClick={() => { window.location.href = 'https://api.uberhealth.co.ke/api/admin/export/users' }}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <Download size={14} /> Users CSV
+          </button>
+        </div>
       </div>
 
       {/* Stats */}

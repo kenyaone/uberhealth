@@ -5,6 +5,9 @@ import {
   TrendingUp, TrendingDown, Minus, Star, Calendar,
   Flame, Brain, Heart, Activity, ChevronRight, Award
 } from 'lucide-react'
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine
+} from 'recharts'
 
 interface MoodLog {
   mood: number
@@ -136,28 +139,36 @@ export default function ProgressDashboard() {
         ))}
       </div>
 
-      {/* Mood trend */}
+      {/* Mood trend chart */}
       {stats.moods.length > 0 && (
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Activity size={16} className="text-teal-600" />
-              <h2 className="font-semibold text-gray-900">Mood (last 30 days)</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-white">Mood — last 30 days</h2>
             </div>
             <div className="flex items-center gap-1 text-sm text-gray-500">
               <MoodTrendIcon moods={stats.moods} />
               <span>{avgMood ? `Avg ${avgMood}/10` : 'No data'}</span>
             </div>
           </div>
-          <div className="space-y-2">
-            {stats.moods.slice(-10).reverse().map((m, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="text-xs text-gray-400 w-16 flex-shrink-0">
-                  {new Date(m.logged_at).toLocaleDateString('en-KE', { month: 'short', day: 'numeric' })}
-                </span>
-                <MoodBar value={m.mood} />
-              </div>
-            ))}
+          <div className="h-44">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={stats.moods.map(m => ({
+                date: new Date(m.logged_at).toLocaleDateString('en-KE', { month: 'short', day: 'numeric' }),
+                mood: m.mood,
+              }))} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9ca3af' }} interval="preserveStartEnd" />
+                <YAxis domain={[0, 10]} tick={{ fontSize: 10, fill: '#9ca3af' }} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,.12)', fontSize: 12 }}
+                  formatter={(v: number) => [`${v}/10`, 'Mood']}
+                />
+                <ReferenceLine y={5} stroke="#e5e7eb" strokeDasharray="4 4" />
+                <Line type="monotone" dataKey="mood" stroke="#0d9488" strokeWidth={2} dot={{ r: 3, fill: '#0d9488' }} activeDot={{ r: 5 }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
           <Link to="/mood" className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700 mt-4">
             Log mood today <ChevronRight size={14} />

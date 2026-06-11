@@ -146,8 +146,11 @@ export default function Professionals() {
               <div key={pro.id} className="card hover:shadow-md transition-shadow">
                 <div className="flex items-start gap-4">
                   <div className="relative flex-shrink-0">
-                    <div className="w-14 h-14 rounded-xl bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xl">
-                      {pro.display_name.charAt(0).toUpperCase()}
+                    <div className="w-14 h-14 rounded-xl bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xl overflow-hidden">
+                      {(pro as any).avatar
+                        ? <img src={(pro as any).avatar} alt={pro.display_name} className="w-full h-full object-cover" />
+                        : pro.display_name.charAt(0).toUpperCase()
+                      }
                     </div>
                     {online && (
                       <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 border-2 border-white rounded-full" title="Online now" />

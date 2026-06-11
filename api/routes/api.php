@@ -282,6 +282,8 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/promo-codes', [PromoCodeController::class, 'adminCreate']);
         // SHA accreditation report
         Route::get('/sha-report', [AdminController::class, 'shaReport']);
+        Route::get('/export/sessions', [AdminController::class, 'exportSessions']);
+        Route::get('/export/users', [AdminController::class, 'exportUsers']);
         // User management
         Route::get('/users', [AdminController::class, 'listUsers']);
         Route::put('/users/{id}/ban', [AdminController::class, 'banUser']);

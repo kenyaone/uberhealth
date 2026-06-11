@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\BookingConfirmation;
 use App\Models\Assessment;
 use App\Models\Consultation;
 use App\Models\MoodLog;
@@ -9,6 +10,7 @@ use App\Models\Professional;
 use App\Models\ProfessionalPayout;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -71,9 +73,27 @@ class ConsultationController extends Controller
 
         $message = $isCash ? 'Session confirmed. Pay at the time of the session.' : 'Consultation booked. Proceed to payment.';
 
+        // Confirmation emails (fire-and-forget)
+        $loaded = $consultation->load(['professional.user:id,display_name,email', 'user:id,display_name,email']);
+        try {
+            if ($user->email) {
+                Mail::to($user->email)->send(new BookingConfirmation(
+                    $loaded, $user->display_name ?? $user->username, false
+                ));
+            }
+            $proEmail = $loaded->professional?->user?->email;
+            if ($proEmail) {
+                Mail::to($proEmail)->send(new BookingConfirmation(
+                    $loaded, $loaded->professional->user->display_name ?? 'Professional', true
+                ));
+            }
+        } catch (\Exception $e) {
+            // Email failures must not block the booking response
+        }
+
         return response()->json([
             'message'      => $message,
-            'consultation' => $consultation->load('professional.user:id,display_name'),
+            'consultation' => $loaded,
         ], 201);
     }
 

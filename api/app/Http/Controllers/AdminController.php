@@ -282,4 +282,55 @@ class AdminController extends Controller
             'Content-Disposition' => 'attachment; filename="sha_report_' . $from . '_' . $to . '.csv"',
         ]);
     }
+
+    public function exportSessions()
+    {
+        $rows = \App\Models\Consultation::with(['user:id,display_name,username', 'professional.user:id,display_name'])
+            ->orderByDesc('scheduled_at')
+            ->get()
+            ->map(fn($c) => [
+                $c->consultation_id,
+                \Carbon\Carbon::parse($c->scheduled_at)->setTimezone('Africa/Nairobi')->format('Y-m-d H:i'),
+                $c->status,
+                $c->user?->display_name ?? $c->user?->username ?? '',
+                $c->professional?->user?->display_name ?? '',
+                $c->duration_minutes,
+                $c->amount,
+            ]);
+
+        $csv = collect([['Session ID', 'Scheduled (EAT)', 'Status', 'Patient', 'Professional', 'Duration (min)', 'Amount (KES)']])
+            ->concat($rows)
+            ->map(fn($r) => implode(',', array_map(fn($v) => '"' . str_replace('"', '""', $v) . '"', $r)))
+            ->implode("\n");
+
+        return response($csv, 200, [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="sessions_export.csv"',
+        ]);
+    }
+
+    public function exportUsers()
+    {
+        $rows = \App\Models\User::orderByDesc('created_at')
+            ->get()
+            ->map(fn($u) => [
+                $u->id,
+                $u->username,
+                $u->display_name,
+                $u->email ?? '',
+                $u->role,
+                $u->created_at?->toDateString(),
+                $u->is_banned ? 'banned' : 'active',
+            ]);
+
+        $csv = collect([['ID', 'Username', 'Display Name', 'Email', 'Role', 'Joined', 'Status']])
+            ->concat($rows)
+            ->map(fn($r) => implode(',', array_map(fn($v) => '"' . str_replace('"', '""', $v) . '"', $r)))
+            ->implode("\n");
+
+        return response($csv, 200, [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="users_export.csv"',
+        ]);
+    }
 }

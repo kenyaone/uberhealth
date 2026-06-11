@@ -141,8 +141,11 @@ export default function ProfessionalDetail() {
 
       <div className="card">
         <div className="flex items-start gap-5">
-          <div className="w-20 h-20 rounded-2xl bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-3xl flex-shrink-0">
-            {pro.display_name.charAt(0).toUpperCase()}
+          <div className="w-20 h-20 rounded-2xl bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-3xl flex-shrink-0 overflow-hidden">
+            {(pro as any).avatar
+              ? <img src={(pro as any).avatar} alt={pro.display_name} className="w-full h-full object-cover" />
+              : pro.display_name.charAt(0).toUpperCase()
+            }
           </div>
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-gray-900">{pro.display_name}</h1>

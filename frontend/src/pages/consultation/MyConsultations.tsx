@@ -4,7 +4,7 @@ import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
 import type { Consultation } from '../../types'
 import { format } from 'date-fns'
-import { Video, Clock, CheckCircle, XCircle, AlertCircle, FileText, Calendar, PlayCircle, RotateCcw, X, Loader2 } from 'lucide-react'
+import { Video, Clock, CheckCircle, XCircle, AlertCircle, FileText, Calendar, PlayCircle, RotateCcw, X, Loader2, Star, MessageSquare } from 'lucide-react'
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   pending: { label: 'Awaiting Payment', color: 'text-yellow-700 bg-yellow-50', icon: Clock },
@@ -161,14 +161,15 @@ export default function MyConsultations() {
                       )}
                     </Link>
                   )}
-                  {c.status === 'completed' && !c.user_rating && (
-                    <RateButton consultationId={c.id} onRated={() => {
-                      setConsultations(prev => prev.map(x => x.id === c.id ? { ...x, user_rating: 5 } : x))
-                    }} />
+                  {c.status === 'completed' && !c.user_rating && !isProfessional && (
+                    <FeedbackButton
+                      consultationId={c.consultation_id}
+                      onDone={() => setConsultations(prev => prev.map(x => x.id === c.id ? { ...x, user_rating: 5 } : x))}
+                    />
                   )}
                   {c.status === 'completed' && c.user_rating && (
-                    <span className="text-sm text-amber-500 self-center">
-                      {'⭐'.repeat(c.user_rating)} Rated
+                    <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 flex items-center gap-1 self-center">
+                      <Star size={11} fill="currentColor" /> Reviewed
                     </span>
                   )}
                   {c.status === 'completed' && !isProfessional && (
@@ -263,30 +264,112 @@ td{padding:8px 10px;border:1px solid #e5e7eb;font-size:13px}td:first-child{backg
   )
 }
 
-function RateButton({ consultationId, onRated }: { consultationId: number; onRated: () => void }) {
-  const [rating, setRating] = useState(0)
-  const [showing, setShowing] = useState(false)
+function FeedbackButton({ consultationId, onDone }: { consultationId: string; onDone: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [overall, setOverall]   = useState(0)
+  const [comms, setComms]       = useState(0)
+  const [feltHeard, setFeltHeard]     = useState(false)
+  const [recommend, setRecommend]     = useState(false)
+  const [feltSafe, setFeltSafe]       = useState(false)
+  const [comment, setComment]         = useState('')
+  const [submitting, setSubmitting]   = useState(false)
+  const [error, setError]             = useState('')
 
   const submit = async () => {
-    await api.post(`/consultations/${consultationId}/rate`, { rating })
-    onRated()
-    setShowing(false)
+    if (!overall || !comms) { setError('Please rate both fields.'); return }
+    setSubmitting(true); setError('')
+    try {
+      await api.post(`/consultations/${consultationId}/feedback`, {
+        overall_rating: overall,
+        communication_rating: comms,
+        felt_heard: feltHeard,
+        would_recommend: recommend,
+        felt_safe: feltSafe,
+        comment: comment.trim() || null,
+      })
+      setOpen(false)
+      onDone()
+    } catch (e: any) {
+      setError(e?.response?.data?.error || 'Could not submit. Please try again.')
+    } finally { setSubmitting(false) }
   }
 
-  if (!showing) return (
-    <button onClick={() => setShowing(true)} className="btn-secondary text-sm py-2 flex-1">
-      Rate Session
-    </button>
-  )
-
   return (
-    <div className="flex items-center gap-2 flex-1">
-      <div className="flex gap-1">
-        {[1, 2, 3, 4, 5].map(n => (
-          <button key={n} onClick={() => setRating(n)} className={`text-xl ${n <= rating ? 'text-amber-400' : 'text-gray-300'}`}>★</button>
-        ))}
-      </div>
-      <button onClick={submit} disabled={!rating} className="btn-primary text-xs py-1 px-3">Submit</button>
-    </div>
+    <>
+      <button onClick={() => setOpen(true)} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+        <MessageSquare size={12} /> Review Session
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Star size={16} className="text-amber-400" /> How was your session?
+              </h3>
+              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
+
+            {/* Overall */}
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Overall experience</p>
+              <div className="flex gap-2">
+                {[1,2,3,4,5].map(n => (
+                  <button key={n} onClick={() => setOverall(n)}>
+                    <Star size={28} className={n <= overall ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Communication */}
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Communication & clarity</p>
+              <div className="flex gap-2">
+                {[1,2,3,4,5].map(n => (
+                  <button key={n} onClick={() => setComms(n)}>
+                    <Star size={28} className={n <= comms ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Checkboxes */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: 'Felt heard',     val: feltHeard,  set: setFeltHeard },
+                { label: 'Would recommend',val: recommend,   set: setRecommend },
+                { label: 'Felt safe',      val: feltSafe,    set: setFeltSafe },
+              ].map(({ label, val, set }) => (
+                <label key={label} className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 cursor-pointer text-xs font-medium transition-colors ${val ? 'border-teal-400 bg-teal-50 text-teal-700' : 'border-gray-200 text-gray-500'}`}>
+                  <input type="checkbox" checked={val} onChange={e => set(e.target.checked)} className="sr-only" />
+                  <CheckCircle size={18} className={val ? 'text-teal-500' : 'text-gray-300'} />
+                  {label}
+                </label>
+              ))}
+            </div>
+
+            {/* Comment */}
+            <textarea
+              value={comment}
+              onChange={e => setComment(e.target.value)}
+              placeholder="Optional comment (anonymous)…"
+              className="input-field text-sm resize-none"
+              rows={3}
+              maxLength={1000}
+            />
+
+            {error && <p className="text-sm text-red-500">{error}</p>}
+
+            <div className="flex gap-3">
+              <button onClick={() => setOpen(false)} className="btn-secondary flex-1 text-sm py-2.5">Cancel</button>
+              <button onClick={submit} disabled={submitting || !overall || !comms} className="btn-primary flex-1 text-sm py-2.5 disabled:opacity-50">
+                {submitting ? <Loader2 size={14} className="animate-spin mx-auto" /> : 'Submit Review'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
