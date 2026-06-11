@@ -233,6 +233,53 @@ class AuthController extends Controller
         return response()->json(['message' => 'Password changed successfully.']);
     }
 
+    // ─── Delete Account (Right to Erasure — DPA 2019 s.28) ───────────────────
+
+    public function deleteAccount(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'password' => 'required|string',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        $user = auth('api')->user();
+
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json(['error' => 'Incorrect password.'], 422);
+        }
+
+        $uid = $user->id;
+
+        // Delete personal records
+        DB::table('mood_logs')->where('user_id', $uid)->delete();
+        DB::table('sobriety_trackers')->where('user_id', $uid)->delete();
+        DB::table('journal_entries')->where('user_id', $uid)->delete();
+        DB::table('safety_plans')->where('user_id', $uid)->delete();
+        DB::table('recovery_goals')->where('user_id', $uid)->delete();
+        DB::table('medications')->where('user_id', $uid)->delete();
+        DB::table('user_presence')->where('user_id', $uid)->delete();
+        DB::table('group_memberships')->where('user_id', $uid)->delete();
+        DB::table('push_subscriptions')->where('user_id', $uid)->delete();
+        DB::table('referral_codes')->where('user_id', $uid)->delete();
+        DB::table('peer_mentor_profiles')->where('user_id', $uid)->delete();
+
+        // Anonymise identity — keep anonymised assessment + consultation records
+        // for professional legal obligations (7-year clinical record requirement)
+        $user->update([
+            'username'     => 'deleted_' . $uid . '_' . time(),
+            'display_name' => 'Deleted User',
+            'email'        => null,
+            'phone'        => null,
+            'avatar'       => null,
+        ]);
+
+        auth('api')->logout();
+
+        return response()->json(['message' => 'Account deleted. Your personal data has been erased.']);
+    }
+
     // ─── Avatar Upload ────────────────────────────────────────────────────────
 
     public function uploadAvatar(Request $request)

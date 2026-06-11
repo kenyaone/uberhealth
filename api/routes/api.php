@@ -80,6 +80,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::put('/auth/me', [AuthController::class, 'updateProfile']);
     Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
+    Route::delete('/auth/account', [AuthController::class, 'deleteAccount']);
     Route::post('/auth/avatar', [AuthController::class, 'uploadAvatar']);
 
     // Assessments

@@ -12,6 +12,7 @@ interface SignupForm {
   password_confirm: string
   email?: string
   role: 'user' | 'professional'
+  consent: boolean
 }
 
 export default function Signup() {
@@ -141,6 +142,25 @@ export default function Signup() {
               <option value="user">A Person Seeking Support</option>
               <option value="professional">A Mental Health Professional</option>
             </select>
+          </div>
+
+          {/* DPA 2019 consent — required */}
+          <div>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                {...register('consent', { required: 'You must agree to continue' })}
+                className="mt-0.5 w-4 h-4 accent-teal-600 flex-shrink-0"
+              />
+              <span className="text-sm text-gray-600 leading-relaxed">
+                I have read and agree to the{' '}
+                <Link to="/privacy" target="_blank" className="text-teal-700 font-medium hover:underline">Privacy Policy</Link>
+                {' '}and{' '}
+                <Link to="/terms" target="_blank" className="text-teal-700 font-medium hover:underline">Terms of Service</Link>.
+                I understand my data is processed under the <strong>Kenya Data Protection Act 2019</strong>.
+              </span>
+            </label>
+            {errors.consent && <p className="text-red-500 text-xs mt-1 ml-7">{errors.consent.message}</p>}
           </div>
 
           <button type="submit" disabled={loading} className="btn-primary w-full py-3 mt-2">

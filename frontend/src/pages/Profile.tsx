@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import api from '../api/axios'
-import { Shield, Save, Zap, CheckCircle, Crown, Calendar, ArrowRight, RefreshCw, Camera, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Shield, Save, Zap, CheckCircle, Crown, Calendar, ArrowRight, RefreshCw, Camera, Lock, Eye, EyeOff, Loader2, Trash2, AlertTriangle } from 'lucide-react'
 
 interface ProfileForm {
   display_name: string
@@ -49,6 +49,9 @@ export default function Profile() {
   const [pwSaving, setPwSaving]   = useState(false)
   const [pwDone, setPwDone]       = useState(false)
   const [pwError, setPwError]     = useState('')
+  const [deleteStep, setDeleteStep] = useState<'idle' | 'confirm' | 'deleting'>('idle')
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteError, setDeleteError] = useState('')
   const pwForm = useForm<PwForm>()
 
   const { register, handleSubmit } = useForm<ProfileForm>({
@@ -90,6 +93,22 @@ export default function Profile() {
     } catch (e: any) {
       setPwError(e.response?.data?.error ?? 'Failed to change password.')
     } finally { setPwSaving(false) }
+  }
+
+  const { logout } = useAuthStore()
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) { setDeleteError('Please enter your password.'); return }
+    setDeleteStep('deleting')
+    setDeleteError('')
+    try {
+      await api.delete('/auth/account', { data: { password: deletePassword } })
+      logout()
+      navigate('/login')
+    } catch (e: any) {
+      setDeleteError(e.response?.data?.error ?? 'Failed to delete account. Try again.')
+      setDeleteStep('confirm')
+    }
   }
 
   const onSubmit = async (data: ProfileForm) => {
@@ -311,7 +330,7 @@ export default function Profile() {
               </button>
             </div>
 
-            <p className="text-xs text-center text-gray-400 mt-3">Pay via M-Pesa · Cancel anytime · No card needed</p>
+            <p className="text-xs text-center text-gray-400 mt-3">Cancel anytime · No card needed</p>
           </div>
         )}
       </div>
@@ -378,6 +397,65 @@ export default function Profile() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ── Delete Account (DPA 2019 Right to Erasure) ── */}
+      <div className="card border border-red-100">
+        <h2 className="font-semibold text-red-700 mb-1 flex items-center gap-2">
+          <Trash2 size={16} /> Delete My Account
+        </h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Permanently erases your personal data (name, email, mood logs, journal, goals).
+          Anonymised clinical records are retained for 7 years as required by Kenyan law.
+        </p>
+
+        {deleteStep === 'idle' && (
+          <button
+            onClick={() => setDeleteStep('confirm')}
+            className="flex items-center gap-2 text-sm text-red-600 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors"
+          >
+            <Trash2 size={14} /> Request Account Deletion
+          </button>
+        )}
+
+        {deleteStep === 'confirm' && (
+          <div className="space-y-3">
+            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+              <AlertTriangle size={15} className="text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">
+                This cannot be undone. Enter your password to confirm.
+              </p>
+            </div>
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={e => setDeletePassword(e.target.value)}
+              placeholder="Enter your password"
+              className="input-field"
+            />
+            {deleteError && <p className="text-red-500 text-xs">{deleteError}</p>}
+            <div className="flex gap-2">
+              <button
+                onClick={handleDeleteAccount}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+              >
+                <Trash2 size={14} /> Yes, Delete My Account
+              </button>
+              <button
+                onClick={() => { setDeleteStep('idle'); setDeletePassword(''); setDeleteError('') }}
+                className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {deleteStep === 'deleting' && (
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <Loader2 size={14} className="animate-spin" /> Deleting your account…
+          </div>
+        )}
       </div>
     </div>
   )
