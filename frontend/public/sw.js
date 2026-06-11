@@ -1,4 +1,4 @@
-const CACHE = 'afyayako-v2'
+const CACHE = 'afyayako-v5'
 const OFFLINE_URL = '/offline.html'
 
 // Pre-cache shell on install
