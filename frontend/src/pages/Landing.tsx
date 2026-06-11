@@ -343,18 +343,35 @@ function ChatbotTriage() {
   )
 }
 
+interface OnlineDoc {
+  id: number
+  user_id: number
+  display_name: string
+  years_experience: number
+  specializations: { id: number; name: string }[]
+}
+
 export default function Landing() {
-  const [onlineCount, setOnlineCount] = useState(0)
+  const [onlineDocs, setOnlineDocs] = useState<OnlineDoc[]>([])
 
   useEffect(() => {
-    const fetchCount = () =>
-      api.get('/presence/professionals')
-        .then(r => setOnlineCount((r.data.online_user_ids ?? []).length))
-        .catch(() => {})
-    fetchCount()
-    const poll = setInterval(fetchCount, 30_000)
+    const fetchOnline = async () => {
+      try {
+        const [presRes, proRes] = await Promise.all([
+          api.get('/presence/professionals'),
+          api.get('/professionals'),
+        ])
+        const ids: number[] = presRes.data.online_user_ids ?? []
+        const all: OnlineDoc[] = proRes.data.data?.data ?? proRes.data.data ?? proRes.data
+        setOnlineDocs(all.filter((p: OnlineDoc) => ids.includes(p.user_id)))
+      } catch { /* silent */ }
+    }
+    fetchOnline()
+    const poll = setInterval(fetchOnline, 30_000)
     return () => clearInterval(poll)
   }, [])
+
+  const onlineCount = onlineDocs.length
 
   return (
     <div className="min-h-screen font-sans">
@@ -395,9 +412,9 @@ export default function Landing() {
                 🇰🇪 Kenya's only platform for mental health, addiction &amp; gambling recovery
               </div>
               {onlineCount > 0 && (
-                <div className="inline-flex items-center gap-1.5 bg-green-500/20 border border-green-400/40 text-green-300 text-xs px-3 py-1.5 rounded-full font-semibold">
-                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                  {onlineCount} online now
+                <div className="inline-flex items-center gap-1.5 bg-teal-400/20 border border-teal-400/40 text-teal-200 text-xs px-3 py-1.5 rounded-full font-semibold">
+                  <span className="w-1.5 h-1.5 bg-teal-300 rounded-full animate-pulse" />
+                  {onlineCount} therapist{onlineCount > 1 ? 's' : ''} online now
                 </div>
               )}
             </div>
@@ -435,20 +452,56 @@ export default function Landing() {
 
       {/* ── LIVE AVAILABILITY BANNER ── */}
       {onlineCount > 0 ? (
-        <Link to="/signup" className="block bg-green-500 hover:bg-green-600 transition-colors">
-          <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-center gap-3">
-            <span className="relative flex-shrink-0">
-              <span className="w-3 h-3 bg-white rounded-full block animate-ping absolute" />
-              <span className="w-3 h-3 bg-white rounded-full block relative" />
-            </span>
-            <p className="text-white font-bold text-base md:text-lg text-center">
-              {onlineCount} therapist{onlineCount > 1 ? 's' : ''} available right now — Book an instant session
-            </p>
-            <span className="hidden md:flex items-center gap-1 bg-white text-green-700 font-bold text-sm px-4 py-1.5 rounded-full flex-shrink-0">
-              Book Now <ArrowRight size={14} />
-            </span>
+        <section className="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 border-b border-teal-800 shadow-lg">
+          <div className="max-w-5xl mx-auto px-4 md:px-6 py-5">
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex-shrink-0">
+                  <span className="w-3 h-3 bg-white rounded-full block animate-ping absolute opacity-75" />
+                  <span className="w-3 h-3 bg-white rounded-full block relative" />
+                </span>
+                <span className="text-white font-black text-lg md:text-xl tracking-tight">
+                  {onlineCount} Verified Therapist{onlineCount > 1 ? 's' : ''} Available Right Now
+                </span>
+              </div>
+              <Link
+                to="/signup"
+                className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm px-5 py-2 rounded-xl transition-colors shadow-md flex-shrink-0"
+              >
+                ⚡ Book Instant Session <ArrowRight size={14} />
+              </Link>
+            </div>
+
+            {/* Doctor cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {onlineDocs.map(doc => (
+                <Link
+                  to="/signup"
+                  key={doc.id}
+                  className="flex items-center gap-3 bg-white/15 hover:bg-white/25 border border-white/20 rounded-xl px-4 py-3 transition-colors"
+                >
+                  {/* Avatar */}
+                  <div className="w-10 h-10 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center text-white font-black text-base flex-shrink-0">
+                    {doc.display_name?.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-white font-bold text-sm truncate">{doc.display_name}</span>
+                      <span className="flex items-center gap-0.5 text-[10px] bg-emerald-400/30 text-emerald-100 px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">
+                        <span className="w-1.5 h-1.5 bg-emerald-300 rounded-full animate-pulse" /> Online
+                      </span>
+                    </div>
+                    <div className="text-teal-100 text-xs truncate mt-0.5">
+                      {doc.specializations?.slice(0, 2).map(s => s.name).join(' · ') || 'Mental Health'}
+                    </div>
+                    <div className="text-teal-200 text-xs mt-0.5">{doc.years_experience} yrs experience · KMPDC Verified</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
-        </Link>
+        </section>
       ) : (
         <div className="bg-slate-800 border-b border-slate-700">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-center gap-2">
