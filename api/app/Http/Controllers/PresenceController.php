@@ -83,17 +83,12 @@ class PresenceController extends Controller
     }
 
     // List of online professional user IDs (for green dots in directory)
-    // Requires BOTH: active heartbeat AND explicit is_available_online toggle
+    // Uses is_available_online toggle as the sole signal — no heartbeat required.
+    // Professionals set this explicitly ("I'm available today") so we respect it
+    // until they toggle off or log out.
     public function onlineProfessionals()
     {
-        $cutoff = UserPresence::onlineCutoff();
-
-        $activeUserIds = UserPresence::where('last_seen_at', '>=', $cutoff)
-            ->whereHas('user', fn($q) => $q->where('role', 'professional'))
-            ->pluck('user_id');
-
-        $ids = \App\Models\Professional::whereIn('user_id', $activeUserIds)
-            ->where('is_available_online', true)
+        $ids = \App\Models\Professional::where('is_available_online', true)
             ->where('verification_status', 'verified')
             ->pluck('user_id')
             ->toArray();
