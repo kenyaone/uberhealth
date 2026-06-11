@@ -48,7 +48,7 @@ class AdminController extends Controller
     }
 
     // ─── Manually confirm a consultation payment (for testing / support) ────────
-    public function confirmConsultation($id)
+    public function confirmConsultation(int $id)
     {
         $consultation = Consultation::find($id);
         if (!$consultation) {
@@ -117,14 +117,6 @@ class AdminController extends Controller
             })->sortByDesc('load_pct')->values();
 
         return response()->json(['workload' => $professionals]);
-    }
-
-    public function confirmConsultation(int $id)
-    {
-        $consultation = \App\Models\Consultation::find($id);
-        if (!$consultation) return response()->json(['error' => 'Not found'], 404);
-        $consultation->update(['status' => 'confirmed']);
-        return response()->json(['message' => 'Confirmed.', 'consultation' => $consultation]);
     }
 
     // ─── Support Group Management ─────────────────────────────────────────────
