@@ -394,6 +394,56 @@ export default function Landing() {
         </div>
       </nav>
 
+      {/* ── LIVE AVAILABILITY BANNER ── */}
+      {onlineCount > 0 ? (
+        <section className="bg-gradient-to-r from-orange-500 via-orange-500 to-amber-500 shadow-xl">
+          <div className="max-w-5xl mx-auto px-4 md:px-6 py-5">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex-shrink-0">
+                  <span className="w-3.5 h-3.5 bg-white rounded-full block animate-ping absolute opacity-75" />
+                  <span className="w-3.5 h-3.5 bg-white rounded-full block relative" />
+                </span>
+                <span className="text-white font-black text-lg md:text-2xl tracking-tight drop-shadow">
+                  {onlineCount} Verified Therapist{onlineCount > 1 ? 's' : ''} Available Right Now
+                </span>
+              </div>
+              <Link to="/signup" className="flex items-center gap-2 bg-white text-orange-600 hover:bg-orange-50 font-black text-sm md:text-base px-6 py-2.5 rounded-xl transition-colors shadow-lg flex-shrink-0">
+                ⚡ Talk to a Therapist Now <ArrowRight size={16} />
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {onlineDocs.map(doc => (
+                <Link to="/signup" key={doc.id} className="flex items-center gap-3 bg-white/20 hover:bg-white/30 border border-white/30 rounded-xl px-4 py-3 transition-colors group">
+                  <div className="w-11 h-11 rounded-full bg-white/30 border-2 border-white/60 flex items-center justify-center text-white font-black text-lg flex-shrink-0">
+                    {doc.display_name?.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-white font-bold text-sm truncate">{doc.display_name}</span>
+                      <span className="flex items-center gap-0.5 text-[10px] bg-white/20 text-white px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">
+                        <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> Online
+                      </span>
+                    </div>
+                    <div className="text-orange-100 text-xs truncate mt-0.5">{doc.specializations?.slice(0, 2).map(s => s.name).join(' · ') || 'Mental Health'}</div>
+                    <div className="text-orange-200 text-xs mt-0.5 flex items-center gap-1"><CheckCircle size={10} /> {doc.years_experience} yrs exp · KMPDC Licensed</div>
+                  </div>
+                  <ArrowRight size={14} className="text-white/60 group-hover:text-white flex-shrink-0 transition-colors" />
+                </Link>
+              ))}
+            </div>
+            <p className="text-orange-100 text-xs text-center mt-3">Free to sign up · No real name needed · Encrypted sessions</p>
+          </div>
+        </section>
+      ) : (
+        <div className="bg-slate-800 border-b border-slate-700">
+          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-center gap-2">
+            <span className="w-2 h-2 bg-slate-500 rounded-full flex-shrink-0" />
+            <p className="text-slate-400 text-sm text-center">No therapists online right now — <Link to="/signup" className="text-teal-400 hover:underline font-medium">book a scheduled session</Link></p>
+          </div>
+        </div>
+      )}
+
       {/* ── MARQUEE STRIP ── */}
       <MarqueeStrip />
 
@@ -450,69 +500,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── LIVE AVAILABILITY BANNER ── */}
-      {onlineCount > 0 ? (
-        <section className="bg-gradient-to-r from-orange-500 via-orange-500 to-amber-500 shadow-xl">
-          <div className="max-w-5xl mx-auto px-4 md:px-6 py-5">
-            {/* Header row */}
-            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-              <div className="flex items-center gap-2.5">
-                <span className="relative flex-shrink-0">
-                  <span className="w-3.5 h-3.5 bg-white rounded-full block animate-ping absolute opacity-75" />
-                  <span className="w-3.5 h-3.5 bg-white rounded-full block relative" />
-                </span>
-                <span className="text-white font-black text-lg md:text-2xl tracking-tight drop-shadow">
-                  {onlineCount} Verified Therapist{onlineCount > 1 ? 's' : ''} Available Right Now
-                </span>
-              </div>
-              <Link
-                to="/signup"
-                className="flex items-center gap-2 bg-white text-orange-600 hover:bg-orange-50 font-black text-sm md:text-base px-6 py-2.5 rounded-xl transition-colors shadow-lg flex-shrink-0"
-              >
-                ⚡ Talk to a Therapist Now <ArrowRight size={16} />
-              </Link>
-            </div>
-
-            {/* Doctor cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {onlineDocs.map(doc => (
-                <Link
-                  to="/signup"
-                  key={doc.id}
-                  className="flex items-center gap-3 bg-white/20 hover:bg-white/30 border border-white/30 rounded-xl px-4 py-3 transition-colors group"
-                >
-                  <div className="w-11 h-11 rounded-full bg-white/30 border-2 border-white/60 flex items-center justify-center text-white font-black text-lg flex-shrink-0">
-                    {doc.display_name?.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-white font-bold text-sm truncate">{doc.display_name}</span>
-                      <span className="flex items-center gap-0.5 text-[10px] bg-white/20 text-white px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">
-                        <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> Online
-                      </span>
-                    </div>
-                    <div className="text-orange-100 text-xs truncate mt-0.5">
-                      {doc.specializations?.slice(0, 2).map(s => s.name).join(' · ') || 'Mental Health'}
-                    </div>
-                    <div className="text-orange-200 text-xs mt-0.5 flex items-center gap-1">
-                      <CheckCircle size={10} /> {doc.years_experience} yrs exp · KMPDC Licensed
-                    </div>
-                  </div>
-                  <ArrowRight size={14} className="text-white/60 group-hover:text-white flex-shrink-0 transition-colors" />
-                </Link>
-              ))}
-            </div>
-            <p className="text-orange-100 text-xs text-center mt-3">Free to sign up · No real name needed · Encrypted sessions</p>
-          </div>
-        </section>
-      ) : (
-        <div className="bg-slate-800 border-b border-slate-700">
-          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-center gap-2">
-            <span className="w-2 h-2 bg-slate-500 rounded-full flex-shrink-0" />
-            <p className="text-slate-400 text-sm text-center">No therapists online right now — <Link to="/signup" className="text-teal-400 hover:underline font-medium">book a scheduled session</Link></p>
-          </div>
-        </div>
-      )}
 
       {/* ── STATS BAR ── */}
       <section className="bg-white border-b border-gray-100 shadow-sm">
