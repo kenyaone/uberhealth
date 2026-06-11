@@ -386,8 +386,16 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-16 grid md:grid-cols-2 gap-8 md:gap-12 items-center">
           {/* Left — text */}
           <div>
-            <div className="inline-flex items-center gap-2 bg-teal-900 border border-teal-700 text-teal-200 text-xs px-3 py-1.5 rounded-full mb-4 md:mb-6">
-              🇰🇪 Kenya's only platform for mental health, addiction &amp; gambling recovery
+            <div className="flex flex-wrap gap-2 mb-4 md:mb-6">
+              <div className="inline-flex items-center gap-2 bg-teal-900 border border-teal-700 text-teal-200 text-xs px-3 py-1.5 rounded-full">
+                🇰🇪 Kenya's only platform for mental health, addiction &amp; gambling recovery
+              </div>
+              {onlineCount > 0 && (
+                <div className="inline-flex items-center gap-1.5 bg-green-500/20 border border-green-400/40 text-green-300 text-xs px-3 py-1.5 rounded-full font-semibold">
+                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                  {onlineCount} online now
+                </div>
+              )}
             </div>
             <h1 className="text-3xl md:text-5xl font-black mb-4 leading-tight tracking-tight">
               Real Help.<br />
@@ -421,17 +429,34 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── LIVE AVAILABILITY BANNER ── */}
+      {onlineCount > 0 ? (
+        <Link to="/signup" className="block bg-green-500 hover:bg-green-600 transition-colors">
+          <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-center gap-3">
+            <span className="relative flex-shrink-0">
+              <span className="w-3 h-3 bg-white rounded-full block animate-ping absolute" />
+              <span className="w-3 h-3 bg-white rounded-full block relative" />
+            </span>
+            <p className="text-white font-bold text-base md:text-lg text-center">
+              {onlineCount} therapist{onlineCount > 1 ? 's' : ''} available right now — Book an instant session
+            </p>
+            <span className="hidden md:flex items-center gap-1 bg-white text-green-700 font-bold text-sm px-4 py-1.5 rounded-full flex-shrink-0">
+              Book Now <ArrowRight size={14} />
+            </span>
+          </div>
+        </Link>
+      ) : (
+        <div className="bg-slate-800 border-b border-slate-700">
+          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-center gap-2">
+            <span className="w-2 h-2 bg-slate-500 rounded-full flex-shrink-0" />
+            <p className="text-slate-400 text-sm text-center">No therapists online right now — <Link to="/signup" className="text-teal-400 hover:underline font-medium">book a scheduled session</Link></p>
+          </div>
+        </div>
+      )}
+
       {/* ── STATS BAR ── */}
       <section className="bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6 text-center">
-          {/* Live online count */}
-          <Link to="/signup" className="group">
-            <div className="flex items-center justify-center gap-1.5">
-              <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${onlineCount > 0 ? 'bg-green-400 animate-pulse' : 'bg-gray-300'}`} />
-              <span className="text-xl md:text-2xl font-black text-green-600">{onlineCount > 0 ? onlineCount : '—'}</span>
-            </div>
-            <div className="text-gray-500 text-xs mt-1">Therapists online now</div>
-          </Link>
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 text-center">
           {STATS.map(({ value, label }) => (
             <div key={label}>
               <div className="text-xl md:text-2xl font-black text-teal-700">{value}</div>
