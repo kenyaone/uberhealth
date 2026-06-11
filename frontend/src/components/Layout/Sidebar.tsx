@@ -55,6 +55,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
     { to: '/admin', icon: ShieldCheck, label: 'Verify Professionals' },
     { to: '/admin/revenue', icon: DollarSign, label: 'Revenue' },
     { to: '/professionals', icon: Users, label: 'All Professionals' },
+    { to: '/library', icon: BookOpen, label: t('recoveryLibrary') },
     { to: '/eap-dashboard', icon: Building2, label: 'EAP Dashboard' },
     { to: '/profile', icon: User, label: t('profile') },
   ]
