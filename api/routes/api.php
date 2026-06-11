@@ -253,6 +253,7 @@ Route::middleware('auth:api')->group(function () {
     // Availability (professional only)
     Route::get('/availability/mine', [AvailabilityController::class, 'mine']);
     Route::put('/availability', [AvailabilityController::class, 'update']);
+    Route::post('/professional/set-online', [ProfessionalController::class, 'setOnline']);
 
     // Continuity — patient's most recent completed professional
     Route::get('/consultations/my-therapist', [ConsultationController::class, 'myTherapist']);

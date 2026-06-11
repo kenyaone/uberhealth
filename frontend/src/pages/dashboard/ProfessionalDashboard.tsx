@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
 import {
   Calendar, DollarSign, Star, Clock, CheckCircle,
-  AlertCircle, Users, TrendingUp, Settings, PlayCircle, Plus, X, Loader2
+  AlertCircle, Users, TrendingUp, Settings, PlayCircle, Plus, X, Loader2,
+  Wifi, WifiOff
 } from 'lucide-react'
 
 interface Consultation {
@@ -63,16 +64,66 @@ export default function ProfessionalDashboard() {
   const [directForm, setDirectForm] = useState<DirectBookForm>({ patient_username: '', scheduled_at: '', duration_minutes: '60', agreed_amount: '', notes: '' })
   const [directLoading, setDirectLoading] = useState(false)
   const [directError, setDirectError] = useState('')
+  const [isOnline, setIsOnline] = useState(false)
+  const [onlineLoading, setOnlineLoading] = useState(false)
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchDashboard = () =>
     api.get('/professionals/me/dashboard')
-      .then(r => setData(r.data))
+      .then(r => {
+        setData(r.data)
+        setIsOnline(r.data.professional?.is_available_online ?? false)
+      })
       .catch(() => {})
+
+  const startHeartbeat = () => {
+    if (heartbeatRef.current) return
+    heartbeatRef.current = setInterval(() => {
+      api.post('/presence/heartbeat', { page: '/dashboard' }).catch(() => {})
+    }, 30_000)
+  }
+
+  const stopHeartbeat = () => {
+    if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null }
+  }
+
+  const toggleOnline = async () => {
+    setOnlineLoading(true)
+    try {
+      const r = await api.post('/professional/set-online', { online: !isOnline })
+      const next = r.data.is_available_online
+      setIsOnline(next)
+      if (next) {
+        api.post('/presence/heartbeat', { page: '/dashboard' }).catch(() => {})
+        startHeartbeat()
+      } else {
+        stopHeartbeat()
+      }
+    } catch { /* ignore */ } finally {
+      setOnlineLoading(false)
+    }
+  }
 
   useEffect(() => {
     fetchDashboard().finally(() => setLoading(false))
     const poll = setInterval(fetchDashboard, 10_000)
     return () => clearInterval(poll)
+  }, [])
+
+  // Heartbeat while online; cleanup on unmount
+  useEffect(() => {
+    if (isOnline) startHeartbeat()
+    else stopHeartbeat()
+    return () => stopHeartbeat()
+  }, [isOnline])
+
+  // Go offline on tab close
+  useEffect(() => {
+    const goOffline = () => {
+      navigator.sendBeacon('/api/professional/set-online', JSON.stringify({ online: false }))
+    }
+    window.addEventListener('beforeunload', goOffline)
+    return () => window.removeEventListener('beforeunload', goOffline)
   }, [])
 
   const submitDirectBook = async () => {
@@ -123,19 +174,41 @@ export default function ProfessionalDashboard() {
     <div className="space-y-6">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Hello, {user?.display_name} 👋</h1>
           <p className="text-gray-500 mt-1">Your professional dashboard</p>
         </div>
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
-          isVerified ? 'bg-green-100 text-green-800' :
-          isPending ? 'bg-yellow-100 text-yellow-800' :
-          'bg-red-100 text-red-800'
-        }`}>
-          {isVerified ? <CheckCircle size={14} /> : <Clock size={14} />}
-          {isVerified ? 'KMPDC Verified' : isPending ? 'Verification Pending' : prof.verification_status}
-        </span>
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Online / Offline toggle */}
+          {isVerified && (
+            <button
+              onClick={toggleOnline}
+              disabled={onlineLoading}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all border-2 ${
+                isOnline
+                  ? 'bg-green-500 border-green-500 text-white shadow-md shadow-green-200'
+                  : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
+              }`}
+            >
+              {onlineLoading
+                ? <Loader2 size={15} className="animate-spin" />
+                : isOnline
+                  ? <><span className="w-2 h-2 rounded-full bg-white animate-pulse" /><Wifi size={15} /></>
+                  : <WifiOff size={15} />
+              }
+              {isOnline ? 'Online — accepting patients' : 'Go Online'}
+            </button>
+          )}
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
+            isVerified ? 'bg-green-100 text-green-800' :
+            isPending ? 'bg-yellow-100 text-yellow-800' :
+            'bg-red-100 text-red-800'
+          }`}>
+            {isVerified ? <CheckCircle size={14} /> : <Clock size={14} />}
+            {isVerified ? 'KMPDC Verified' : isPending ? 'Verification Pending' : prof.verification_status}
+          </span>
+        </div>
       </div>
 
       {/* Direct Booking Modal */}

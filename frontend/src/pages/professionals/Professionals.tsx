@@ -4,7 +4,7 @@ import api from '../../api/axios'
 import type { Professional } from '../../types'
 import { Star, Search, Wifi, AlertCircle, CheckCircle } from 'lucide-react'
 
-const PRESENCE_POLL_MS = 60_000
+const PRESENCE_POLL_MS = 30_000
 
 type ProWithScore = Professional & { match_score?: number }
 
@@ -50,10 +50,13 @@ export default function Professionals() {
     api.get(`/professionals?${params.toString()}`)
       .then(r => {
         const list: ProWithScore[] = r.data.data?.data ?? r.data.data ?? r.data.results ?? r.data
-        // Sort by match_score desc if scores are present
-        if (list.some(p => p.match_score)) {
-          list.sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0))
-        }
+        // Online-first, then by match_score
+        list.sort((a, b) => {
+          const aOnline = onlineUserIds.includes((a as any).user_id ?? -1) ? 1 : 0
+          const bOnline = onlineUserIds.includes((b as any).user_id ?? -1) ? 1 : 0
+          if (bOnline !== aOnline) return bOnline - aOnline
+          return (b.match_score ?? 0) - (a.match_score ?? 0)
+        })
         setProfessionals(list)
       })
       .finally(() => setLoading(false))
@@ -192,10 +195,11 @@ export default function Professionals() {
                   </Link>
                   <Link
                     to={`/book/${pro.id}`}
+                    state={online ? { instant: true } : undefined}
                     className={`flex-1 text-center text-sm py-2 rounded-lg font-medium transition-colors
                       ${online ? 'bg-green-600 hover:bg-green-700 text-white' : 'btn-primary'}`}
                   >
-                    {online ? 'Book Now (Online)' : 'Book Session'}
+                    {online ? '⚡ Book Now' : 'Book Session'}
                   </Link>
                 </div>
               </div>

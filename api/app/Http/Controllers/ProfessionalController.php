@@ -295,10 +295,33 @@ class ProfessionalController extends Controller
         ]);
     }
 
+    public function setOnline(Request $request)
+    {
+        $user = auth('api')->user();
+        $professional = Professional::where('user_id', $user->id)->first();
+        if (!$professional) return response()->json(['error' => 'Not a professional'], 403);
+
+        $go = $request->boolean('online');
+        $professional->update(['is_available_online' => $go]);
+
+        // Update presence record immediately
+        \App\Models\UserPresence::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'last_seen_at' => $go ? now() : now()->subHours(2),
+                'is_online'    => $go,
+                'status'       => $go ? 'online' : 'offline',
+            ]
+        );
+
+        return response()->json(['is_available_online' => $go]);
+    }
+
     private function safeProfessional(Professional $prof): array
     {
         return [
             'id'                       => $prof->id,
+            'user_id'                  => $prof->user_id,
             'display_name'             => $prof->user->display_name ?? null,
             'avatar'                   => $prof->user->avatar ?? null,
             'bio'                      => $prof->bio,

@@ -52,8 +52,17 @@ export default function BookConsultation() {
   const [payMethod, setPayMethod] = useState<PayMethod>('paystack')
   const [claimRef, setClaimRef] = useState('')
 
+  const isInstant = !!(location.state as any)?.instant
+
+  // For instant booking pre-fill scheduled_at to 5 minutes from now
+  const instantDefault = isInstant ? (() => {
+    const d = new Date(Date.now() + 5 * 60 * 1000)
+    d.setSeconds(0, 0)
+    return d.toISOString().slice(0, 16)
+  })() : ''
+
   const { register, handleSubmit, watch, formState: { errors } } = useForm<BookForm>({
-    defaultValues: { duration_minutes: 60, share_assessments: false, share_mood_logs: false }
+    defaultValues: { duration_minutes: 60, share_assessments: false, share_mood_logs: false, scheduled_at: instantDefault }
   })
   const { register: regIns, handleSubmit: handleIns, formState: { errors: insErrors } } = useForm<InsuranceForm>({
     defaultValues: { provider: 'SHA (Social Health Authority)' }
@@ -290,9 +299,15 @@ export default function BookConsultation() {
   return (
     <div className="max-w-2xl mx-auto space-y-5">
       <h1 className="text-2xl font-bold text-gray-900">
-        {followUpState?.is_follow_up ? 'Book a Follow-up Session' : 'Book a Session'}
+        {isInstant ? '⚡ Instant Session' : followUpState?.is_follow_up ? 'Book a Follow-up Session' : 'Book a Session'}
       </h1>
-      {followUpState?.is_follow_up && (
+      {isInstant && (
+        <div className="flex items-center gap-2 text-sm text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+          This therapist is online now — your session time has been pre-filled. You can adjust it if needed.
+        </div>
+      )}
+      {followUpState?.is_follow_up && !isInstant && (
         <p className="text-sm text-primary-700 bg-primary-50 border border-primary-200 rounded-lg px-3 py-2">
           This is a follow-up to your previous session with this therapist.
         </p>
