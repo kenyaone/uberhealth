@@ -343,6 +343,15 @@ function ChatbotTriage() {
 }
 
 export default function Landing() {
+  const [onlineCount, setOnlineCount] = useState(0)
+
+  useEffect(() => {
+    fetch('/api/presence/professionals')
+      .then(r => r.json())
+      .then(d => setOnlineCount((d.online_user_ids ?? []).length))
+      .catch(() => {})
+  }, [])
+
   return (
     <div className="min-h-screen font-sans">
 
@@ -414,7 +423,15 @@ export default function Landing() {
 
       {/* ── STATS BAR ── */}
       <section className="bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 text-center">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6 text-center">
+          {/* Live online count */}
+          <Link to="/signup" className="group">
+            <div className="flex items-center justify-center gap-1.5">
+              <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${onlineCount > 0 ? 'bg-green-400 animate-pulse' : 'bg-gray-300'}`} />
+              <span className="text-xl md:text-2xl font-black text-green-600">{onlineCount > 0 ? onlineCount : '—'}</span>
+            </div>
+            <div className="text-gray-500 text-xs mt-1">Therapists online now</div>
+          </Link>
           {STATS.map(({ value, label }) => (
             <div key={label}>
               <div className="text-xl md:text-2xl font-black text-teal-700">{value}</div>

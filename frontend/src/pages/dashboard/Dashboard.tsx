@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import api from '../../api/axios'
-import { ClipboardList, Users, Calendar, TrendingUp, Heart, AlertCircle, Sparkles, Loader2, UserCheck, Bell } from 'lucide-react'
+import { ClipboardList, Users, Calendar, TrendingUp, Heart, AlertCircle, Sparkles, Loader2, UserCheck, Bell, Wifi } from 'lucide-react'
 import type { Assessment, MoodLog, SobrietyTracker } from '../../types'
 import ProfessionalDashboard from './ProfessionalDashboard'
 import { useT } from '../../contexts/I18nContext'
@@ -22,11 +22,18 @@ export default function Dashboard() {
   const [insightLoading, setInsightLoading] = useState(false)
   const [myTherapist, setMyTherapist] = useState<Therapist | null>(null)
   const [pendingSurvey, setPendingSurvey] = useState(false)
+  const [onlineCount, setOnlineCount] = useState(0)
 
   useEffect(() => {
     // Continuity + pending survey (non-blocking)
     api.get('/consultations/my-therapist').then(r => setMyTherapist(r.data.therapist)).catch(() => {})
     api.get('/surveys/pending').then(r => setPendingSurvey(!!r.data.survey)).catch(() => {})
+    // Online therapist count
+    const fetchOnline = () =>
+      api.get('/presence/professionals').then(r => setOnlineCount((r.data.online_user_ids ?? []).length)).catch(() => {})
+    fetchOnline()
+    const poll = setInterval(fetchOnline, 30_000)
+    return () => clearInterval(poll)
   }, [])
 
   useEffect(() => {
@@ -64,6 +71,20 @@ export default function Dashboard() {
             <span className="font-semibold">{t('pendingSurvey')}</span>
             <span className="text-amber-600 ml-2 text-xs">{t('takeSurvey')} →</span>
           </div>
+        </Link>
+      )}
+
+      {/* Online therapists nudge */}
+      {onlineCount > 0 && (
+        <Link to="/professionals" className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3 hover:bg-green-100 transition-colors">
+          <span className="relative flex-shrink-0">
+            <span className="w-3 h-3 rounded-full bg-green-400 block animate-pulse" />
+          </span>
+          <div className="flex-1 text-sm text-green-800">
+            <span className="font-semibold">{onlineCount} therapist{onlineCount > 1 ? 's' : ''} available right now</span>
+            <span className="text-green-600 ml-2 text-xs">Book an instant session →</span>
+          </div>
+          <Wifi size={16} className="text-green-500 flex-shrink-0" />
         </Link>
       )}
 
