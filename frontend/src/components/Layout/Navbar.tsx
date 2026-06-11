@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
-import { LogOut, Moon, Sun } from 'lucide-react'
+import { LogOut, Moon, Sun, Menu } from 'lucide-react'
 import NotificationBell from '../NotificationBell'
 import { useT } from '../../contexts/I18nContext'
 import { useTheme } from '../../contexts/ThemeContext'
 
-export default function Navbar() {
+interface NavbarProps { onMenuClick: () => void }
+
+export default function Navbar({ onMenuClick }: NavbarProps) {
   const { user, logout } = useAuthStore()
   const { lang, setLang, t } = useT()
   const { theme, toggle: toggleTheme } = useTheme()
@@ -17,9 +19,18 @@ export default function Navbar() {
   }
 
   return (
-    <header className="bg-white dark:bg-gray-900 dark:border-gray-700 border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-      <div className="text-sm text-gray-500">
-        {t('welcomeBack')}, <span className="font-medium text-gray-900">{user?.display_name}</span>
+    <header className="bg-white dark:bg-gray-900 dark:border-gray-700 border-b border-gray-200 px-4 py-3 flex items-center justify-between gap-3">
+      {/* Hamburger — mobile only */}
+      <button
+        onClick={onMenuClick}
+        className="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 flex-shrink-0"
+        aria-label="Open menu"
+      >
+        <Menu size={20} />
+      </button>
+
+      <div className="text-sm text-gray-500 truncate flex-1 min-w-0">
+        {t('welcomeBack')}, <span className="font-medium text-gray-900 dark:text-white">{user?.display_name}</span>
       </div>
       <div className="flex items-center gap-3">
         {/* Language toggle */}

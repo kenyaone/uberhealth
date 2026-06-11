@@ -9,7 +9,9 @@ import {
 import { useAuthStore } from '../../store/authStore'
 import { useT } from '../../contexts/I18nContext'
 
-export default function Sidebar() {
+interface SidebarProps { onClose?: () => void }
+
+export default function Sidebar({ onClose }: SidebarProps) {
   const user = useAuthStore(s => s.user)
   const { t } = useT()
   const isAdmin = user?.role === 'admin'
@@ -68,7 +70,7 @@ export default function Sidebar() {
   const links = isAdmin ? adminLinks : isProfessional ? professionalLinks : userLinksWithPricing
 
   return (
-    <aside className="w-64 flex flex-col" style={{ background: 'linear-gradient(180deg, #0a5e2a 0%, #0f4d48 60%, #0a3d38 100%)' }}>
+    <aside className="w-64 h-full flex flex-col" style={{ background: 'linear-gradient(180deg, #0a5e2a 0%, #0f4d48 60%, #0a3d38 100%)' }}>
       <div className="p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #22c55e, #14b8a6)' }}>
@@ -86,6 +88,7 @@ export default function Sidebar() {
           <NavLink
             key={to}
             to={to}
+            onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 isActive
