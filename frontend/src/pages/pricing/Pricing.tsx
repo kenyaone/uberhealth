@@ -20,7 +20,7 @@ export default function Pricing() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    api.get('/subscriptions/plans').then(r => setPlans(r.data))
+    api.get('/subscriptions/plans').then(r => setPlans(r.data.plans ?? r.data))
     api.get('/corporate/tiers').then(r => setEapTiers(r.data))
   }, [])
 
