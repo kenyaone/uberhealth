@@ -335,6 +335,12 @@ class PaymentController extends Controller
         if ($consultation->status !== 'pending') return response()->json(['error' => 'Consultation already paid'], 422);
 
         $secretKey = config('services.paystack.secret_key', env('PAYSTACK_SECRET_KEY', ''));
+
+        if (empty($secretKey)) {
+            Log::error('Paystack secret key not configured');
+            return response()->json(['error' => 'Online payment is not yet configured. Please contact support or use insurance.'], 503);
+        }
+
         $email     = $user->email ?: "user{$user->id}@afyayako.com";
         $reference = 'ps-' . $consultation->consultation_id . '-' . time();
         $amountKobo = (int) round($consultation->amount * 100); // KES in smallest unit

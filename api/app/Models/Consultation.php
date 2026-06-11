@@ -9,6 +9,8 @@ class Consultation extends Model
 {
     use HasFactory;
 
+    protected $appends = ['user_display_name', 'professional_detail'];
+
     protected $fillable = [
         'consultation_id',
         'user_id',
@@ -48,6 +50,21 @@ class Consultation extends Model
             'recording_deleted' => 'boolean',
             'is_follow_up' => 'boolean',
             'amount' => 'float',
+        ];
+    }
+
+    public function getUserDisplayNameAttribute(): ?string
+    {
+        return $this->user?->display_name ?: $this->user?->username;
+    }
+
+    public function getProfessionalDetailAttribute(): ?array
+    {
+        $proUser = $this->professional?->user;
+        if (!$proUser) return null;
+        return [
+            'display_name' => $proUser->display_name ?: $proUser->username,
+            'avatar'       => $proUser->avatar,
         ];
     }
 

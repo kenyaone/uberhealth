@@ -46,6 +46,7 @@ export default function TakeAssessment() {
   const [genderFilter, setGenderFilter] = useState('')
   const [filterLoading, setFilterLoading] = useState(false)
   const [savedResult, setSavedResult] = useState<any>(null)
+  const [submitError, setSubmitError] = useState('')
 
   useEffect(() => {
     api.get(`/assessments/questions/${type}`).then(r => setData(r.data))
@@ -90,6 +91,7 @@ export default function TakeAssessment() {
 
   const handleSubmit = async () => {
     setLoading(true)
+    setSubmitError('')
     try {
       const res = await api.post('/assessments', { assessment_type: type, responses })
       const a = res.data.assessment ?? res.data
@@ -110,6 +112,9 @@ export default function TakeAssessment() {
 
         !isProfessional ? fetchMatches(fullResult) : Promise.resolve(),
       ]).finally(() => setAiInsightLoading(false))
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.response?.data?.message || 'Could not save your results. Please make sure you are logged in and try again.'
+      setSubmitError(msg)
     } finally {
       setLoading(false)
     }
@@ -383,6 +388,13 @@ export default function TakeAssessment() {
             )
           })}
         </div>
+
+        {submitError && (
+          <div className="mt-4 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm flex items-start gap-2">
+            <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+            <span>{submitError}</span>
+          </div>
+        )}
 
         <div className="flex justify-between mt-6">
           <button
