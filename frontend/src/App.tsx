@@ -51,6 +51,7 @@ import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
 import PeerMentors from './pages/community/PeerMentors'
 import MyClaims from './pages/consultation/MyClaims'
+import RecoveryLibrary from './pages/library/RecoveryLibrary'
 import InstallPwa from './components/InstallPwa'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -99,6 +100,7 @@ export default function App() {
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/subscribe" element={<Subscribe />} />
           <Route path="/corporate" element={<Corporate />} />
+          <Route path="/library" element={<RecoveryLibrary />} />
           <Route path="/lessons" element={<Lessons />} />
           <Route path="/lessons/:slug" element={<LessonDetail />} />
           <Route path="/history" element={<SessionHistory />} />
