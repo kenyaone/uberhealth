@@ -18,13 +18,24 @@ interface Lesson {
   user_progress?: { completed: boolean; progress_pct: number }
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  refusal:    'Refusal Skills',
+  alcohol:    'Alcohol Recovery',
+  gambling:   'Gambling Recovery',
+  depression: 'Depression',
+  anxiety:    'Anxiety',
+  trauma:     'Trauma',
+  wellness:   'Wellness',
+}
+
 const CATEGORY_COLORS: Record<string, string> = {
-  'Mental Health':  'bg-teal-50 text-teal-700 border-teal-200',
-  'Addiction':      'bg-orange-50 text-orange-700 border-orange-200',
-  'Gambling':       'bg-purple-50 text-purple-700 border-purple-200',
-  'Coping Skills':  'bg-blue-50 text-blue-700 border-blue-200',
-  'Refusal Skills': 'bg-amber-50 text-amber-700 border-amber-200',
-  'Mindfulness':    'bg-green-50 text-green-700 border-green-200',
+  refusal:    'bg-amber-50 text-amber-700 border-amber-200',
+  alcohol:    'bg-orange-50 text-orange-700 border-orange-200',
+  gambling:   'bg-purple-50 text-purple-700 border-purple-200',
+  depression: 'bg-blue-50 text-blue-700 border-blue-200',
+  anxiety:    'bg-teal-50 text-teal-700 border-teal-200',
+  trauma:     'bg-rose-50 text-rose-700 border-rose-200',
+  wellness:   'bg-green-50 text-green-700 border-green-200',
 }
 
 const EXERCISES = [
@@ -193,7 +204,7 @@ export default function RecoveryLibrary() {
                   {categories.map(cat => (
                     <button key={cat} onClick={() => setActiveCategory(cat === activeCategory ? '' : cat)}
                       className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${activeCategory === cat ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>
-                      {cat}
+                      {CATEGORY_LABELS[cat] ?? cat}
                     </button>
                   ))}
                 </div>
@@ -207,7 +218,7 @@ export default function RecoveryLibrary() {
                 {Object.entries(grouped).map(([cat, items]) => (
                   <div key={cat}>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${CATEGORY_COLORS[cat] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>{cat}</span>
+                      <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${CATEGORY_COLORS[cat] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>{CATEGORY_LABELS[cat] ?? cat}</span>
                       <span className="text-xs text-gray-400">{items.filter(l => l.user_progress?.completed).length}/{items.length} done</span>
                     </div>
                     <div className="space-y-2">
