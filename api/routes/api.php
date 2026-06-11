@@ -68,6 +68,7 @@ Route::post('/professionals/register', [ProfessionalController::class, 'register
 Route::get('/professionals/me/dashboard', [ProfessionalController::class, 'dashboard'])->middleware('auth:api');
 Route::put('/professionals/availability', [ProfessionalController::class, 'updateAvailability'])->middleware('auth:api');
 Route::get('/professionals/{id}', [ProfessionalController::class, 'show']);
+Route::get('/professionals/{id}/reviews', [SessionFeedbackController::class, 'publicReviews']);
 
 // -------------------------------------------------------
 // Authenticated routes
@@ -234,6 +235,7 @@ Route::middleware('auth:api')->group(function () {
     // Session feedback
     Route::post('/consultations/{consultationId}/feedback', [SessionFeedbackController::class, 'store']);
     Route::get('/feedback/mine', [SessionFeedbackController::class, 'myFeedback']);
+    Route::post('/reviews/{id}/flag', [SessionFeedbackController::class, 'flag']);
 
     // Follow-up surveys
     Route::get('/surveys/pending', [SurveyController::class, 'pending']);
@@ -287,5 +289,9 @@ Route::middleware('auth:api')->group(function () {
         // Peer mentor approvals
         Route::get('/peer-mentors', [PeerMentorController::class, 'adminList']);
         Route::put('/peer-mentors/{id}/approve', [PeerMentorController::class, 'adminApprove']);
+        // Review moderation
+        Route::get('/reviews/flagged', [SessionFeedbackController::class, 'adminFlagged']);
+        Route::put('/reviews/{id}/clear', [SessionFeedbackController::class, 'adminClear']);
+        Route::delete('/reviews/{id}', [SessionFeedbackController::class, 'adminRemove']);
     });
 });

@@ -19,6 +19,17 @@ interface FlaggedMsg {
   user: { id: number; display_name: string; username: string }
 }
 
+interface FlaggedReview {
+  id: number
+  overall_rating: number
+  comment: string | null
+  flag_reason: string
+  flagged_at: string
+  flagged_by: string
+  professional: string | null
+  professional_id: number | null
+}
+
 interface ProfRow {
   id: number
   kmpdc_license: string
@@ -107,6 +118,8 @@ export default function AdminDashboard() {
   const [usersLoading, setUsersLoading] = useState(false)
   const [banningId, setBanningId]   = useState<number | null>(null)
   const [peerMentors, setPeerMentors] = useState<PeerMentorRow[]>([])
+  const [flaggedReviews, setFlaggedReviews] = useState<FlaggedReview[]>([])
+  const [actingReview, setActingReview] = useState<number | null>(null)
   const [approvingMentor, setApprovingMentor] = useState<number | null>(null)
   const [newGroup, setNewGroup] = useState({ name: '', description: '', category: 'depression', icon: '💬', is_active: true })
   const [showNewGroup, setShowNewGroup] = useState(false)
@@ -140,6 +153,7 @@ export default function AdminDashboard() {
     }
     if (mainTab === 'moderation') {
       api.get('/admin/moderation/flagged').then(r => setFlaggedMsgs(r.data.data ?? r.data)).catch(() => {})
+      api.get('/admin/reviews/flagged').then(r => setFlaggedReviews(r.data.flagged ?? [])).catch(() => {})
     }
     if (mainTab === 'users') {
       setUsersLoading(true)
@@ -198,6 +212,25 @@ export default function AdminDashboard() {
   const hideMessage = async (groupId: number, msgId: number) => {
     await api.put(`/admin/groups/${groupId}/moderate/${msgId}`)
     setFlaggedMsgs(prev => prev.filter(m => m.id !== msgId))
+  }
+
+  const clearReview = async (id: number) => {
+    setActingReview(id)
+    try {
+      await api.put(`/admin/reviews/${id}/clear`)
+      setFlaggedReviews(prev => prev.filter(r => r.id !== id))
+    } catch { alert('Failed to clear review.') }
+    finally { setActingReview(null) }
+  }
+
+  const removeReview = async (id: number) => {
+    if (!window.confirm('Remove this review from the professional\'s profile? This cannot be undone.')) return
+    setActingReview(id)
+    try {
+      await api.delete(`/admin/reviews/${id}`)
+      setFlaggedReviews(prev => prev.filter(r => r.id !== id))
+    } catch { alert('Failed to remove review.') }
+    finally { setActingReview(null) }
   }
 
   const handleConfirmPayment = async (id: number) => {
@@ -281,8 +314,8 @@ export default function AdminDashboard() {
             }`}
           >
             <Icon size={14} /> {label}
-            {key === 'moderation' && flaggedMsgs.length > 0 && (
-              <span className="bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold">{flaggedMsgs.length}</span>
+            {key === 'moderation' && (flaggedMsgs.length + flaggedReviews.length) > 0 && (
+              <span className="bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold">{flaggedMsgs.length + flaggedReviews.length}</span>
             )}
           </button>
         ))}
@@ -660,39 +693,108 @@ export default function AdminDashboard() {
 
       {/* ── MODERATION TAB ── */}
       {mainTab === 'moderation' && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Shield size={18} className="text-red-500" /> Flagged Messages
-          </h2>
-          {flaggedMsgs.length === 0 ? (
-            <div className="card text-center py-10 text-gray-400">
-              <Shield size={36} className="mx-auto mb-2 text-gray-200" />
-              No flagged messages — all clear.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {flaggedMsgs.map(m => (
-                <div key={m.id} className="card border-l-4 border-red-400">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
-                        <span className="font-medium text-gray-700">{m.display_name}</span>
-                        in <span className="text-teal-600">{m.group?.name}</span>
-                        · {new Date(m.created_at).toLocaleString('en-KE')}
+        <div className="space-y-8">
+
+          {/* Flagged Reviews */}
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Star size={18} className="text-amber-500" /> Flagged Reviews
+              {flaggedReviews.length > 0 && (
+                <span className="bg-amber-500 text-white text-xs rounded-full px-2 py-0.5 font-bold">{flaggedReviews.length}</span>
+              )}
+            </h2>
+            {flaggedReviews.length === 0 ? (
+              <div className="card text-center py-8 text-gray-400 text-sm">
+                <Star size={28} className="mx-auto mb-2 text-gray-200" />
+                No flagged reviews — all clear.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {flaggedReviews.map(r => (
+                  <div key={r.id} className="card border-l-4 border-amber-400">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-3 flex-wrap text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            {[1,2,3,4,5].map(n => (
+                              <Star key={n} size={12} className={n <= r.overall_rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'} />
+                            ))}
+                          </span>
+                          <span>for <span className="font-medium text-gray-700">{r.professional ?? 'Unknown Professional'}</span></span>
+                          <span>·</span>
+                          <span>{r.flagged_at ? new Date(r.flagged_at).toLocaleDateString('en-KE') : '—'}</span>
+                        </div>
+                        {r.comment && (
+                          <p className="text-sm text-gray-800 bg-gray-50 rounded-lg p-2 italic">"{r.comment}"</p>
+                        )}
+                        <div className="flex items-start gap-1.5 text-xs text-red-700 bg-red-50 rounded-lg px-3 py-2">
+                          <AlertCircle size={13} className="flex-shrink-0 mt-0.5" />
+                          <span><strong>Reason:</strong> {r.flag_reason}</span>
+                        </div>
+                        <p className="text-xs text-gray-400">Reported by: {r.flagged_by}</p>
                       </div>
-                      <p className="text-sm text-gray-800 bg-red-50 rounded p-2">{m.content}</p>
+                      <div className="flex flex-col gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => clearReview(r.id)}
+                          disabled={actingReview === r.id}
+                          className="flex items-center gap-1 text-xs bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg font-medium"
+                        >
+                          <CheckCircle size={12} /> Keep
+                        </button>
+                        <button
+                          onClick={() => removeReview(r.id)}
+                          disabled={actingReview === r.id}
+                          className="flex items-center gap-1 text-xs bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg font-medium"
+                        >
+                          <Trash2 size={12} /> Remove
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => hideMessage(m.group.id, m.id)}
-                      className="flex items-center gap-1 text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-medium flex-shrink-0"
-                    >
-                      <Trash2 size={12} /> Hide
-                    </button>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Flagged Group Messages */}
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Shield size={18} className="text-red-500" /> Flagged Group Messages
+              {flaggedMsgs.length > 0 && (
+                <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-bold">{flaggedMsgs.length}</span>
+              )}
+            </h2>
+            {flaggedMsgs.length === 0 ? (
+              <div className="card text-center py-8 text-gray-400 text-sm">
+                <Shield size={28} className="mx-auto mb-2 text-gray-200" />
+                No flagged messages — all clear.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {flaggedMsgs.map(m => (
+                  <div key={m.id} className="card border-l-4 border-red-400">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
+                          <span className="font-medium text-gray-700">{m.display_name}</span>
+                          in <span className="text-teal-600">{m.group?.name}</span>
+                          · {new Date(m.created_at).toLocaleString('en-KE')}
+                        </div>
+                        <p className="text-sm text-gray-800 bg-red-50 rounded p-2">{m.content}</p>
+                      </div>
+                      <button
+                        onClick={() => hideMessage(m.group.id, m.id)}
+                        className="flex items-center gap-1 text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-medium flex-shrink-0"
+                      >
+                        <Trash2 size={12} /> Hide
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
         </div>
       )}
     </div>
