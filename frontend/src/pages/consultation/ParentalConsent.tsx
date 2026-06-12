@@ -117,7 +117,7 @@ export default function ParentalConsent() {
                         newOtp[i] = e.target.value.replace(/\D/g, '')
                         setOtp(newOtp.join(''))
                         if (e.target.value && i < 3) {
-                          e.target.nextElementSibling?.focus()
+                          (e.target.nextElementSibling as HTMLInputElement)?.focus()
                         }
                       }}
                       className="w-14 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
