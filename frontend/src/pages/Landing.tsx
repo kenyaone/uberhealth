@@ -183,7 +183,7 @@ export default function Landing() {
               <span className="text-orange-400">No Judgment.</span>
             </h1>
             <p className="text-slate-300 text-base md:text-lg mb-8 leading-relaxed">
-              Speak to a <strong className="text-white">KMPDC-verified therapist</strong> — anonymously. No WhatsApp. No real name required.
+              Speak to a <strong className="text-white">KMPDC & CPB-verified therapist</strong> — anonymously. No WhatsApp. No real name required.
             </p>
             <div className="flex gap-3 flex-wrap">
               <Link to="/signup" className="flex items-center gap-2 px-7 py-3.5 bg-orange-500 hover:bg-orange-400 rounded-xl font-bold text-white transition-colors shadow-lg shadow-orange-900/40">
