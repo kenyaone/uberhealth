@@ -66,6 +66,7 @@ export default function ProfessionalDashboard() {
   const [directError, setDirectError] = useState('')
   const [isOnline, setIsOnline] = useState(false)
   const [onlineLoading, setOnlineLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<'sessions' | 'treatment-plans' | 'referrals'>('sessions')
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchDashboard = () =>
@@ -359,8 +360,46 @@ export default function ProfessionalDashboard() {
         </div>
       </div>
 
-      {/* Upcoming sessions */}
+      {/* Tabs: Sessions / Treatment Plans / Referrals */}
       <div>
+        <div className="border-b border-gray-200 mb-6">
+          <div className="flex gap-6">
+            <button
+              onClick={() => setActiveTab('sessions')}
+              className={`pb-3 px-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'sessions'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Upcoming Sessions
+            </button>
+            <button
+              onClick={() => setActiveTab('treatment-plans')}
+              className={`pb-3 px-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'treatment-plans'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Treatment Plans
+            </button>
+            <button
+              onClick={() => setActiveTab('referrals')}
+              className={`pb-3 px-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'referrals'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Pending Referrals
+            </button>
+          </div>
+        </div>
+
+        {/* Sessions Tab */}
+        {activeTab === 'sessions' && (
+        <>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-gray-900">Upcoming Sessions</h2>
           <Link to="/consultations" className="text-sm text-primary-600 hover:underline">View all</Link>
@@ -396,6 +435,75 @@ export default function ProfessionalDashboard() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        </>
+        )}
+
+        {/* Treatment Plans Tab */}
+        {activeTab === 'treatment-plans' && (
+          <div className="card">
+            <h3 className="font-semibold text-gray-900 mb-4">Treatment Plans</h3>
+            <p className="text-gray-500 text-sm mb-4">View and manage treatment plans you've prescribed to patients.</p>
+            <div className="space-y-3">
+              <div className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors cursor-pointer">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="font-medium text-gray-900">Patient Recovery Plan</h4>
+                    <p className="text-xs text-gray-500 mt-1">Created 2 days ago · 8 sessions planned</p>
+                  </div>
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Active</span>
+                </div>
+              </div>
+              <div className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors cursor-pointer">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="font-medium text-gray-900">Behavioral Intervention Plan</h4>
+                    <p className="text-xs text-gray-500 mt-1">Created 1 week ago · 5 sessions planned</p>
+                  </div>
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">In Progress</span>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 text-center mt-6">Full treatment plan management coming soon</p>
+          </div>
+        )}
+
+        {/* Referrals Tab */}
+        {activeTab === 'referrals' && (
+          <div className="card">
+            <h3 className="font-semibold text-gray-900 mb-4">Pending Referral Approvals</h3>
+            <p className="text-gray-500 text-sm mb-4">Review and approve referrals from supervisors and colleagues.</p>
+            <div className="space-y-3">
+              <div className="p-4 border border-amber-200 bg-amber-50 rounded-lg">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="font-medium text-gray-900">Referral from Dr. Sarah M.</h4>
+                    <p className="text-xs text-gray-600 mt-1">Patient: John Doe • Reason: Severe anxiety</p>
+                    <p className="text-xs text-gray-500 mt-2">Requires your approval to proceed</p>
+                  </div>
+                  <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">Pending</span>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <button className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg">
+                    Approve
+                  </button>
+                  <button className="flex-1 px-3 py-2 border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50">
+                    Decline
+                  </button>
+                </div>
+              </div>
+              <div className="p-4 border border-green-200 bg-green-50 rounded-lg">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="font-medium text-gray-900">Referral from Dr. James K.</h4>
+                    <p className="text-xs text-gray-600 mt-1">Patient: Jane Smith • Reason: Trauma therapy</p>
+                    <p className="text-xs text-gray-500 mt-2">Approved 3 hours ago</p>
+                  </div>
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Approved</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
