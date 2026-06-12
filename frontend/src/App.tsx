@@ -56,6 +56,8 @@ import InstallPwa from './components/InstallPwa'
 import BurnoutAssessment from './pages/assessments/BurnoutAssessment'
 import BurnoutReport from './pages/assessments/BurnoutReport'
 import ParentalConsent from './pages/consultation/ParentalConsent'
+import ClientRiskAssessment from './pages/assessment/ClientRiskAssessment'
+import ClinicalDashboard from './pages/assessment/ClinicalDashboard'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -129,6 +131,8 @@ export default function App() {
           <Route path="/peer-mentors" element={<PeerMentors />} />
           <Route path="/my-claims" element={<MyClaims />} />
           <Route path="/parental-consent" element={<ParentalConsent />} />
+          <Route path="/assessment/client-risk" element={<ClientRiskAssessment />} />
+          <Route path="/assessment/clinical-dashboard" element={<ClinicalDashboard />} />
         </Route>
       </Routes>
     </BrowserRouter>
