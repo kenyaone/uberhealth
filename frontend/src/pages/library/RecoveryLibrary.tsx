@@ -16,20 +16,17 @@ interface Lesson {
 }
 
 const CATEGORIES = [
-  { key: 'refusal',    label: 'How to Say No',      emoji: '🛡️', bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-900'  },
-  { key: 'decision',   label: 'Decision Making',    emoji: '🧭', bg: 'bg-sky-50',    border: 'border-sky-200',    text: 'text-sky-900'    },
-  { key: 'alcohol',    label: 'Stopping Drinking',  emoji: '🌿', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-900' },
-  { key: 'gambling',   label: 'Stopping Gambling',  emoji: '🎯', bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-900' },
-  { key: 'depression', label: 'Feeling Low',        emoji: '🌤️', bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-900'   },
-  { key: 'anxiety',    label: 'Worry & Anxiety',    emoji: '🌊', bg: 'bg-teal-50',   border: 'border-teal-200',   text: 'text-teal-900'   },
-  { key: 'trauma',     label: 'Healing from Hurt',  emoji: '🌱', bg: 'bg-rose-50',   border: 'border-rose-200',   text: 'text-rose-900'   },
-  { key: 'wellness',   label: 'Staying Well',       emoji: '✨', bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-900'  },
+  { key: 'stress',    label: 'Stress',              emoji: '🧠', bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-900'   },
+  { key: 'gambling',  label: 'Gambling',             emoji: '🎯', bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-900' },
+  { key: 'substance', label: 'Alcohol & Drug Use',   emoji: '🍃', bg: 'bg-teal-50',   border: 'border-teal-200',   text: 'text-teal-900'   },
 ]
 
 function isScenario(title: string) {
   const t = title.toLowerCase()
   return t.startsWith('scenario:') || t.startsWith('branching in practice') || t.startsWith('branching after')
 }
+
+
 
 function cleanTitle(title: string) {
   return title
