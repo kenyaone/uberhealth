@@ -25,6 +25,11 @@ export default function Professionals() {
   const [search, setSearch] = useState('')
   const [specialization, setSpecialization] = useState('')
   const [maxRate, setMaxRate] = useState('')
+  const [mode, setMode] = useState('')
+  const [gender, setGender] = useState('')
+  const [ageRange, setAgeRange] = useState('')
+  const [tribe, setTribe] = useState('')
+  const [location, setLocation] = useState('')
   const [onlineUserIds, setOnlineUserIds] = useState<number[]>([])
   const presenceRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -45,6 +50,11 @@ export default function Professionals() {
     if (search) params.set('search', search)
     if (specialization) params.set('specialization', specialization)
     if (maxRate) params.set('max_rate', maxRate)
+    if (mode) params.set('mode', mode)
+    if (gender) params.set('gender', gender)
+    if (ageRange) params.set('age_range', ageRange)
+    if (tribe) params.set('tribe', tribe)
+    if (location) params.set('location', location)
 
     setLoading(true)
     api.get(`/professionals?${params.toString()}`)
@@ -60,7 +70,7 @@ export default function Professionals() {
         setProfessionals(list)
       })
       .finally(() => setLoading(false))
-  }, [search, specialization, maxRate])
+  }, [search, specialization, maxRate, mode, gender, ageRange, tribe, location])
 
   const isOnline = (pro: ProWithScore) =>
     onlineUserIds.includes((pro as any).user_id ?? (pro as any).user?.id ?? -1)
@@ -78,25 +88,75 @@ export default function Professionals() {
 
       {/* Filters */}
       <div className="card">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="input-field pl-9"
-              placeholder="Search by name, issue..."
-            />
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="input-field pl-9"
+                placeholder="Search by name, issue..."
+              />
+            </div>
+            <select value={specialization} onChange={e => setSpecialization(e.target.value)} className="input-field">
+              <option value="">All Specializations</option>
+              <option value="depression">Depression</option>
+              <option value="anxiety">Anxiety</option>
+              <option value="substance-use">Substance Use</option>
+              <option value="alcohol">Alcohol Recovery</option>
+              <option value="gambling">Gambling</option>
+              <option value="trauma">Trauma & PTSD</option>
+            </select>
           </div>
-          <select value={specialization} onChange={e => setSpecialization(e.target.value)} className="input-field">
-            <option value="">All Specializations</option>
-            <option value="depression">Depression</option>
-            <option value="anxiety">Anxiety</option>
-            <option value="substance-use">Substance Use</option>
-            <option value="alcohol">Alcohol Recovery</option>
-            <option value="gambling">Gambling</option>
-            <option value="trauma">Trauma & PTSD</option>
-          </select>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <select value={mode} onChange={e => setMode(e.target.value)} className="input-field text-sm">
+              <option value="">Mode</option>
+              <option value="virtual">Virtual</option>
+              <option value="physical">In-Person</option>
+            </select>
+            <select value={gender} onChange={e => setGender(e.target.value)} className="input-field text-sm">
+              <option value="">Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="non-binary">Non-binary</option>
+            </select>
+            <select value={ageRange} onChange={e => setAgeRange(e.target.value)} className="input-field text-sm">
+              <option value="">Age Range</option>
+              <option value="20-30">20-30</option>
+              <option value="30-40">30-40</option>
+              <option value="40-50">40-50</option>
+              <option value="50+">50+</option>
+            </select>
+            <select value={location} onChange={e => setLocation(e.target.value)} className="input-field text-sm">
+              <option value="">Location</option>
+              <option value="nairobi">Nairobi</option>
+              <option value="mombasa">Mombasa</option>
+              <option value="kisumu">Kisumu</option>
+              <option value="nakuru">Nakuru</option>
+            </select>
+            <select value={tribe} onChange={e => setTribe(e.target.value)} className="input-field text-sm">
+              <option value="">Tribe</option>
+              <option value="kikuyu">Kikuyu</option>
+              <option value="luhya">Luhya</option>
+              <option value="kamba">Kamba</option>
+              <option value="maasai">Maasai</option>
+            </select>
+            {(mode || gender || ageRange || location || tribe) && (
+              <button
+                onClick={() => {
+                  setMode('')
+                  setGender('')
+                  setAgeRange('')
+                  setLocation('')
+                  setTribe('')
+                }}
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg font-medium transition-colors"
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

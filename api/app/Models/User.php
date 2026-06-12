@@ -20,6 +20,7 @@ class User extends Authenticatable implements JWTSubject
         'is_anonymous_mode',
         'password',
         'avatar',
+        'date_of_birth',
     ];
 
     protected $hidden = [
@@ -32,6 +33,7 @@ class User extends Authenticatable implements JWTSubject
         return [
             'password' => 'hashed',
             'is_anonymous_mode' => 'boolean',
+            'date_of_birth' => 'date',
         ];
     }
 
@@ -91,5 +93,10 @@ class User extends Authenticatable implements JWTSubject
     public function activeSubscription()
     {
         return $this->hasOne(Subscription::class)->where('status', 'active')->latest();
+    }
+
+    public function parentalConsent()
+    {
+        return $this->hasOne(ParentalConsent::class);
     }
 }

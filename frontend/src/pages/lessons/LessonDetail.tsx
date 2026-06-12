@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { marked } from 'marked'
 import api from '../../api/axios'
 import { ChevronLeft, CheckCircle, Clock, BookOpen, Loader2, Lock } from 'lucide-react'
 
@@ -23,6 +24,46 @@ export default function LessonDetail() {
   const [loading, setLoading] = useState(true)
   const [completing, setCompleting] = useState(false)
   const [done, setDone] = useState(false)
+
+  // Activate interactive blocks after content renders
+  useEffect(() => {
+    if (!lesson) return
+    const container = document.getElementById('lesson-content')
+    if (!container) return
+
+    const handleClick = (e: Event) => {
+      const target = e.target as HTMLElement
+
+      const btn = target.closest<HTMLButtonElement>('.ifb-btn')
+      if (btn && !btn.disabled) {
+        const block = btn.closest('.ifb-choice')!
+        const isOk = btn.dataset.ok === '1'
+        const feedback = btn.dataset.fb ?? ''
+        block.querySelectorAll<HTMLButtonElement>('.ifb-btn').forEach(b => {
+          b.disabled = true
+          if (b === btn) b.classList.add(isOk ? 'chosen-ok' : 'chosen-ng')
+        })
+        const out = block.querySelector<HTMLElement>('.ifb-out')!
+        out.textContent = (isOk ? '✅ ' : '⚠️ ') + feedback
+        out.className = `ifb-out show ${isOk ? 'ok' : 'ng'}`
+        return
+      }
+
+      const save = target.closest<HTMLButtonElement>('.ifb-save')
+      if (save && !save.disabled) {
+        const block = save.closest('.ifb-reflect')!
+        const ta = block.querySelector<HTMLTextAreaElement>('.ifb-ta')!
+        if (ta.value.trim()) {
+          save.textContent = 'Saved ✓'
+          save.disabled = true
+          ta.readOnly = true
+        }
+      }
+    }
+
+    container.addEventListener('click', handleClick)
+    return () => container.removeEventListener('click', handleClick)
+  }, [lesson])
 
   useEffect(() => {
     api.get(`/lessons/${slug}`)
@@ -105,9 +146,9 @@ export default function LessonDetail() {
       </div>
 
       {/* Lesson content */}
-      <div className="card prose prose-sm max-w-none text-gray-700 leading-relaxed">
+      <div id="lesson-content" className="card prose prose-sm max-w-none text-gray-700 leading-relaxed">
         {lesson.content ? (
-          <div dangerouslySetInnerHTML={{ __html: lesson.content.replace(/\n/g, '<br />') }} />
+          <div dangerouslySetInnerHTML={{ __html: marked.parse(lesson.content, { breaks: true }) as string }} />
         ) : (
           <p className="text-gray-400 italic">No content yet.</p>
         )}

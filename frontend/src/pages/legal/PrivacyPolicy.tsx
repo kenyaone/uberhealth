@@ -151,12 +151,25 @@ export default function PrivacyPolicy() {
             In the event of a data breach affecting personal data, we will notify the Data Protection Commissioner within 72 hours and affected users without undue delay, as required by DPA 2019 s.43.
           </p>
 
-          <h2>8. Cookies</h2>
+          <h2>8. Data Responsibility for Physical Referrals</h2>
+          <p>
+            When you book an in-person (physical) session, certain data is shared with the professional to ensure safe, effective care:
+          </p>
+          <ul>
+            <li><strong>Shared with in-person therapist:</strong> Your display name (or pseudonym), relevant assessment scores, mood/health history you've logged, and any session notes from previous sessions</li>
+            <li><strong>Location data:</strong> If you enable geolocation, your county (not precise GPS) is used to match you with nearby professionals. The professional will not receive your exact coordinates unless you explicitly share them</li>
+            <li><strong>Parent/guardian consent (minors):</strong> If you are under 18, your parent/guardian's phone number is stored solely for OTP verification and is not shared with the professional</li>
+            <li><strong>Confidentiality agreement:</strong> All in-person professionals sign a confidentiality agreement affirming they will not share your identity or health information with anyone except in emergencies (where legally mandated by the Mental Health Act or Professional Ethics Code)</li>
+            <li><strong>Session records:</strong> The professional may create session notes in your clinical record. These notes remain on the platform and are not transmitted outside our infrastructure</li>
+            <li><strong>Emergencies:</strong> In a mental health emergency (imminent risk of harm to self/others), professionals may contact emergency services or next-of-kin without consent, as required by law</li>
+          </ul>
+
+          <h2>9. Cookies</h2>
           <p>
             We use only essential cookies: a session token (JWT stored in memory, not cookies) and a language preference (localStorage). We do not use advertising, tracking, or third-party analytics cookies. No consent banner is required because we do not use non-essential cookies.
           </p>
 
-          <h2>9. Changes to This Policy</h2>
+          <h2>10. Changes to This Policy</h2>
           <p>
             Material changes to this policy will be emailed to registered users at least 14 days before taking effect. The current version is always available at mhapke.com/privacy.
           </p>

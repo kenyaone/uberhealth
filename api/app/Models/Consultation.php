@@ -19,6 +19,10 @@ class Consultation extends Model
         'duration_minutes',
         'status',
         'amount',
+        'mode',
+        'consent_accepted_at',
+        'booking_fee_paid',
+        'booking_fee_payment_id',
         'jitsi_room',
         'share_assessments',
         'share_mood_logs',
@@ -42,12 +46,14 @@ class Consultation extends Model
             'scheduled_at' => 'datetime',
             'actual_start' => 'datetime',
             'actual_end' => 'datetime',
+            'consent_accepted_at' => 'datetime',
             'notes_requested_at' => 'datetime',
             'share_assessments' => 'boolean',
             'share_mood_logs' => 'boolean',
             'recording_enabled' => 'boolean',
             'recording_kept' => 'boolean',
             'recording_deleted' => 'boolean',
+            'booking_fee_paid' => 'boolean',
             'is_follow_up' => 'boolean',
             'amount' => 'float',
         ];
@@ -86,5 +92,10 @@ class Consultation extends Model
     public function payout()
     {
         return $this->hasOne(ProfessionalPayout::class);
+    }
+
+    public function treatmentPlan()
+    {
+        return $this->hasOne(TreatmentPlan::class);
     }
 }

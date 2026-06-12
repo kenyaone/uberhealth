@@ -35,6 +35,8 @@ class ReferralController extends Controller
             'referred_to_professional_id' => $request->referred_to_professional_id,
             'referred_to_name'            => $request->referred_to_name,
             'referred_to_org'             => $request->referred_to_org,
+            'facility_name'               => $request->input('facility_name'),
+            'facility_address'            => $request->input('facility_address'),
             'reason'                      => $request->reason,
             'notes'                       => $request->notes,
         ]);
@@ -76,5 +78,64 @@ class ReferralController extends Controller
             ->orderByDesc('created_at')
             ->get();
         return response()->json(['referrals' => $referrals]);
+    }
+
+    public function approve(Request $request, $id)
+    {
+        $user = auth('api')->user();
+        if ($user->role !== 'admin' && $user->role !== 'professional') {
+            return response()->json(['error' => 'Only admins or supervisors can approve referrals'], 403);
+        }
+
+        $request->validate([
+            'approval_notes' => 'nullable|string|max:500',
+        ]);
+
+        $referral = Referral::findOrFail($id);
+
+        $referral->update([
+            'approved_by' => $user->id,
+            'approved_at' => now(),
+            'approval_notes' => $request->approval_notes,
+        ]);
+
+        Notification::send(
+            $referral->patient_id,
+            'referral_approved',
+            'Your referral has been approved',
+            'Your referral is now approved and you can proceed.',
+            ['referral_id' => $referral->id]
+        );
+
+        return response()->json(['success' => true, 'referral' => $referral]);
+    }
+
+    public function reject(Request $request, $id)
+    {
+        $user = auth('api')->user();
+        if ($user->role !== 'admin' && $user->role !== 'professional') {
+            return response()->json(['error' => 'Only admins or supervisors can reject referrals'], 403);
+        }
+
+        $request->validate([
+            'rejection_reason' => 'required|string|max:500',
+        ]);
+
+        $referral = Referral::findOrFail($id);
+
+        $referral->update([
+            'status' => 'rejected',
+            'approval_notes' => $request->rejection_reason,
+        ]);
+
+        Notification::send(
+            $referral->patient_id,
+            'referral_rejected',
+            'Your referral was not approved',
+            'The referral could not be approved. Reason: ' . $request->rejection_reason,
+            ['referral_id' => $referral->id]
+        );
+
+        return response()->json(['success' => true, 'message' => 'Referral rejected']);
     }
 }

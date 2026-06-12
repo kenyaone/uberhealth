@@ -21,13 +21,6 @@ const CATEGORIES = [
   { key: 'substance', label: 'Alcohol & Drug Use',   emoji: '🍃', bg: 'bg-teal-50',   border: 'border-teal-200',   text: 'text-teal-900'   },
 ]
 
-function isScenario(title: string) {
-  const t = title.toLowerCase()
-  return t.startsWith('scenario:') || t.startsWith('branching in practice') || t.startsWith('branching after')
-}
-
-
-
 function cleanTitle(title: string) {
   return title
     .replace(/^Scenario:\s*/i, '')
@@ -56,8 +49,6 @@ export default function RecoveryLibrary() {
 
   const activeCfg = CATEGORIES.find(c => c.key === activeCat)
   const catLessons = activeCat ? lessons.filter(l => l.category === activeCat) : []
-  const foundations = catLessons.filter(l => !isScenario(l.title))
-  const scenarios   = catLessons.filter(l =>  isScenario(l.title))
 
   return (
     <div className="max-w-2xl space-y-5">
@@ -111,23 +102,8 @@ export default function RecoveryLibrary() {
       ) : (
 
         /* ── Lesson list ── */
-        <div className="space-y-5">
-          {foundations.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Foundation</p>
-              <div className="space-y-2">
-                {foundations.map((l, i) => <LessonCard key={l.id} lesson={l} index={i + 1} />)}
-              </div>
-            </div>
-          )}
-          {scenarios.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Scenarios</p>
-              <div className="space-y-2">
-                {scenarios.map((l, i) => <LessonCard key={l.id} lesson={l} index={i + 1} scenario />)}
-              </div>
-            </div>
-          )}
+        <div className="space-y-2">
+          {catLessons.map((l, i) => <LessonCard key={l.id} lesson={l} index={i + 1} />)}
         </div>
 
       )}
@@ -135,15 +111,15 @@ export default function RecoveryLibrary() {
   )
 }
 
-function LessonCard({ lesson, index, scenario }: { lesson: Lesson; index: number; scenario?: boolean }) {
+function LessonCard({ lesson, index }: { lesson: Lesson; index: number }) {
   const done = lesson.user_progress?.completed
   return (
     <Link to={`/lessons/${lesson.slug}`}
       className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all hover:shadow-sm group ${
-        done ? 'bg-green-50 border-green-200' : scenario ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-200 hover:border-primary-200'
+        done ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200 hover:border-primary-200'
       }`}>
       <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-sm font-bold ${
-        done ? 'bg-green-100 text-green-700' : scenario ? 'bg-gray-200 text-gray-500' : 'bg-primary-50 text-primary-700'
+        done ? 'bg-green-100 text-green-700' : 'bg-primary-50 text-primary-700'
       }`}>
         {done
           ? <CheckCircle size={15} className="text-green-600" />

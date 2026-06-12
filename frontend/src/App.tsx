@@ -53,6 +53,9 @@ import PeerMentors from './pages/community/PeerMentors'
 import MyClaims from './pages/consultation/MyClaims'
 import RecoveryLibrary from './pages/library/RecoveryLibrary'
 import InstallPwa from './components/InstallPwa'
+import BurnoutAssessment from './pages/assessments/BurnoutAssessment'
+import BurnoutReport from './pages/assessments/BurnoutReport'
+import ParentalConsent from './pages/consultation/ParentalConsent'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -86,6 +89,8 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/assessments" element={<Assessments />} />
           <Route path="/assessments/:type" element={<TakeAssessment />} />
+          <Route path="/burnout-assessment" element={<BurnoutAssessment />} />
+          <Route path="/burnout-report/:id" element={<BurnoutReport />} />
           <Route path="/professionals" element={<Professionals />} />
           <Route path="/professionals/:id" element={<ProfessionalDetail />} />
           <Route path="/book/:professionalId" element={<BookConsultation />} />
@@ -123,6 +128,7 @@ export default function App() {
           <Route path="/eap-dashboard" element={<EAPDashboard />} />
           <Route path="/peer-mentors" element={<PeerMentors />} />
           <Route path="/my-claims" element={<MyClaims />} />
+          <Route path="/parental-consent" element={<ParentalConsent />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -202,42 +202,103 @@ export default function Landing() {
           <div className="relative h-72 md:h-[420px] rounded-2xl overflow-hidden shadow-2xl">
             <img src="/stress.jpg" alt="Mental health support" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
+            <div className="absolute top-4 right-4 bg-white/95 backdrop-blur border border-white/40 rounded-lg px-3 py-2 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-300 flex items-center justify-center flex-shrink-0">
+                <span className="text-xs font-black text-blue-700">CPB</span>
+              </div>
+              <div className="text-xs font-semibold text-gray-800">CPB<br/>Verified</div>
+            </div>
             <div className="absolute bottom-4 left-4 right-4 bg-white/10 backdrop-blur border border-white/20 rounded-xl px-4 py-3">
               <p className="text-white text-sm font-semibold">You don't have to face this alone.</p>
-              <p className="text-white/70 text-xs mt-0.5">Confidential support from KMPDC-verified therapists.</p>
+              <p className="text-white/70 text-xs mt-0.5">Confidential support from KMPDC & CPB-verified therapists.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── 3 SERVICE AREAS ── */}
+      {/* ── 4 SERVICE AREAS ── */}
       <section className="bg-gray-50 py-16 px-5">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-black text-gray-900 text-center mb-2">What We Help With</h2>
-          <p className="text-gray-500 text-center mb-10">Most platforms only cover anxiety and depression. We go further.</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <p className="text-gray-500 text-center mb-10">Comprehensive mental health, addiction, sleep, and wellbeing support.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
               <div className="text-3xl mb-3">🧠</div>
               <h3 className="font-bold text-gray-900 text-lg mb-2">Mental Health</h3>
-              <p className="text-gray-500 text-sm mb-4">Depression, anxiety, stress, trauma, grief, and burnout — with PHQ-9 and GAD-7 clinical screening.</p>
+              <p className="text-gray-500 text-sm mb-4">Depression, anxiety, stress, trauma, grief — with PHQ-9 and GAD-7 clinical screening.</p>
               <Link to="/signup" className="text-teal-600 text-sm font-semibold hover:underline flex items-center gap-1">Get help <ArrowRight size={13} /></Link>
             </div>
             <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
               <div className="relative h-36 overflow-hidden">
                 <img src="/drunkard.jpg" alt="Addiction recovery" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-orange-900/70 to-transparent" />
-                <div className="absolute bottom-3 left-4 text-white font-bold text-base">Addiction Recovery</div>
+                <div className="absolute bottom-3 left-4 text-white font-bold text-sm">Addiction Recovery</div>
               </div>
               <div className="p-5">
-                <p className="text-gray-500 text-sm mb-4">Alcohol, drugs, tobacco, and miraa — with AUDIT and FTND clinical screening tools.</p>
+                <p className="text-gray-500 text-sm mb-4">Alcohol, drugs, tobacco — with AUDIT screening and specialist support.</p>
                 <Link to="/signup" className="text-teal-600 text-sm font-semibold hover:underline flex items-center gap-1">Start recovery <ArrowRight size={13} /></Link>
               </div>
             </div>
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
               <div className="text-3xl mb-3">🎰</div>
               <h3 className="font-bold text-gray-900 text-lg mb-2">Gambling Recovery</h3>
-              <p className="text-gray-500 text-sm mb-4">Problem gambling and betting addiction — with PGSI screening and specialised therapists.</p>
+              <p className="text-gray-500 text-sm mb-4">Problem gambling and betting addiction — with PGSI screening tool.</p>
               <Link to="/signup" className="text-teal-600 text-sm font-semibold hover:underline flex items-center gap-1">Find support <ArrowRight size={13} /></Link>
+            </div>
+            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+              <div className="text-3xl mb-3">😴</div>
+              <h3 className="font-bold text-gray-900 text-lg mb-2">Sleep Hygiene</h3>
+              <p className="text-gray-500 text-sm mb-4">Insomnia, sleep disorders, and rest — with ISI clinical assessment.</p>
+              <Link to="/signup" className="text-teal-600 text-sm font-semibold hover:underline flex items-center gap-1">Sleep better <ArrowRight size={13} /></Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── BURNOUT ASSESSMENT HERO ── */}
+      <section className="bg-gradient-to-r from-red-50 to-orange-50 py-12 md:py-16 px-5 border-b-2 border-red-100">
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8 items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-red-100 border border-red-200 text-red-700 text-xs px-3 py-1.5 rounded-full mb-4 font-medium">
+              🔥 Featured: Professional Burnout Tool
+            </div>
+            <h2 className="text-2xl md:text-3xl font-black text-gray-900 mb-3">
+              Are You Experiencing Burnout?
+            </h2>
+            <p className="text-gray-600 mb-5 leading-relaxed">
+              Using the ProQOL-5 assessment, we measure compassion satisfaction, burnout, and secondary trauma. Get your personalized report with actionable insights and AI-generated recovery recommendations.
+            </p>
+            <p className="text-sm text-gray-500 mb-6 flex items-center gap-2">
+              <CheckCircle size={16} className="text-teal-600" />
+              30 questions • 5 minutes • Anonymous results
+            </p>
+            <Link to="/burnout-assessment" className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-colors shadow-lg shadow-red-900/20">
+              Take Burnout Assessment <ArrowRight size={16} />
+            </Link>
+          </div>
+          <div className="bg-white rounded-2xl p-6 border border-red-100 shadow-lg">
+            <div className="space-y-4">
+              <div className="flex gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600 font-bold">1</div>
+                <div>
+                  <p className="font-semibold text-gray-900 text-sm">Assess Your Status</p>
+                  <p className="text-gray-500 text-xs">30-item ProQOL-5 assessment</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 text-orange-600 font-bold">2</div>
+                <div>
+                  <p className="font-semibold text-gray-900 text-sm">Get Your Zones</p>
+                  <p className="text-gray-500 text-xs">Green • Yellow • Orange • Red</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 text-green-600 font-bold">3</div>
+                <div>
+                  <p className="font-semibold text-gray-900 text-sm">AI-Powered Report</p>
+                  <p className="text-gray-500 text-xs">Personalized recovery guide</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

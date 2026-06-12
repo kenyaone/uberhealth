@@ -24,6 +24,14 @@ class Professional extends Model
         'is_accepting_new_patients',
         'profile_photo',
         'mpesa_number',
+        'location_city',
+        'location_county',
+        'latitude',
+        'longitude',
+        'tribe',
+        'date_of_birth',
+        'cpb_license',
+        'is_available_physical',
     ];
 
     protected function casts(): array
@@ -31,8 +39,12 @@ class Professional extends Model
         return [
             'is_available_online' => 'boolean',
             'is_accepting_new_patients' => 'boolean',
+            'is_available_physical' => 'boolean',
             'rating' => 'float',
             'rate_per_hour' => 'float',
+            'latitude' => 'float',
+            'longitude' => 'float',
+            'date_of_birth' => 'date',
         ];
     }
 

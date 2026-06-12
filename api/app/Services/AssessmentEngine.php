@@ -12,6 +12,7 @@ class AssessmentEngine
             'audit' => $this->scoreAudit($responses),
             'pgsi'  => $this->scorePgsi($responses),
             'ftnd'  => $this->scoreFtnd($responses),
+            'isi'   => $this->scoreIsi($responses),
             default => throw new \InvalidArgumentException("Unknown assessment type: {$type}"),
         };
     }
@@ -223,6 +224,41 @@ class AssessmentEngine
             $severity = 'Very High Dependence';
             $interpretation = 'You have very high nicotine dependence. Nicotine has a strong grip on your daily routine and physiology.';
             $recommendations = 'Immediate professional support is strongly advised. Medical treatment with prescription medications and intensive behavioral therapy offers the best chance of success.';
+        }
+
+        return [
+            'score' => $score,
+            'severity' => $severity,
+            'interpretation' => $interpretation,
+            'recommendations' => $recommendations,
+            'is_crisis_flag' => false,
+        ];
+    }
+
+    public function scoreIsi(array $responses): array
+    {
+        $keys = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'];
+        $score = 0;
+        foreach ($keys as $key) {
+            $score += (int) ($responses[$key] ?? 0);
+        }
+
+        if ($score <= 7) {
+            $severity = 'No Clinically Significant Insomnia';
+            $interpretation = 'Your sleep appears to be healthy. You are falling asleep, staying asleep, and waking refreshed most nights.';
+            $recommendations = 'Continue maintaining good sleep habits: consistent sleep schedule, dark/cool bedroom, limit screen time before bed, avoid caffeine in the evening.';
+        } elseif ($score <= 14) {
+            $severity = 'Subthreshold Insomnia';
+            $interpretation = 'You are experiencing some sleep difficulties but they are not yet significantly impacting your daily functioning. Sleep issues are mild to moderate.';
+            $recommendations = 'Try improving sleep hygiene: establish a bedtime routine, limit naps, exercise earlier in the day, use relaxation techniques like deep breathing before bed.';
+        } elseif ($score <= 21) {
+            $severity = 'Moderate Clinical Insomnia';
+            $interpretation = 'You are experiencing moderate insomnia that is likely affecting your daytime functioning, mood, and concentration. Sleep is a significant concern.';
+            $recommendations = 'Consider speaking with a sleep specialist or mental health professional. Cognitive Behavioural Therapy for Insomnia (CBT-I) is highly effective. Avoid sleep medications as a first resort.';
+        } else {
+            $severity = 'Severe Clinical Insomnia';
+            $interpretation = 'Your insomnia is severe and significantly impacting your health, work, relationships, and quality of life. This requires professional intervention.';
+            $recommendations = 'Please seek professional help from a sleep specialist or psychiatrist. CBT-I is the gold standard treatment. A sleep study may be recommended to rule out sleep disorders like sleep apnea.';
         }
 
         return [

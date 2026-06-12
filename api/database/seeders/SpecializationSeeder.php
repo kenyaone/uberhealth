@@ -23,6 +23,7 @@ class SpecializationSeeder extends Seeder
             'Eating Disorders',
             'OCD & Intrusive Thoughts',
             'Tobacco Cessation',
+            'Sleep Hygiene & Insomnia',
         ];
 
         foreach ($specializations as $name) {

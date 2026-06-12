@@ -44,3 +44,83 @@
 
 /* Jitsi container cleanup */
 #jitsi-iframe-container { display: block; }
+
+/* ── Interactive lesson blocks ─────────────── */
+.ifb-choice, .ifb-reflect {
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  border-radius: 12px;
+}
+.ifb-choice  { background: #f0f9ff; border: 1.5px solid #bae6fd; }
+.ifb-reflect { background: #faf5ff; border: 1.5px solid #e9d5ff; }
+
+.ifb-q {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin: 0 0 0.75rem !important;
+  color: #1e40af;
+}
+.ifb-reflect .ifb-q { color: #6b21a8; }
+
+.ifb-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 0.875rem;
+  margin: 0.35rem 0;
+  background: white;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-family: inherit;
+  line-height: 1.4;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ifb-btn:hover:not(:disabled) { border-color: #94a3b8; background: #f8fafc; }
+.ifb-btn:disabled { cursor: default; }
+.ifb-btn.chosen-ok { background: #f0fdf4; border-color: #86efac; color: #166534; font-weight: 500; }
+.ifb-btn.chosen-ng { background: #fff7ed; border-color: #fdba74; color: #9a3412; font-weight: 500; }
+
+.ifb-out {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  display: none;
+}
+.ifb-out.show { display: block; }
+.ifb-out.ok { background: #f0fdf4; border-left: 3px solid #22c55e; color: #166534; }
+.ifb-out.ng { background: #fff7ed; border-left: 3px solid #f97316; color: #9a3412; }
+
+.ifb-ta {
+  display: block;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  box-sizing: border-box;
+}
+.ifb-ta:focus { outline: none; border-color: #a78bfa; }
+.ifb-ta:read-only { background: #f5f3ff; color: #6b21a8; }
+
+.ifb-save {
+  margin-top: 0.5rem;
+  padding: 0.4rem 1.25rem;
+  background: #7c3aed;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ifb-save:hover:not(:disabled) { background: #6d28d9; }
+.ifb-save:disabled { background: #059669; cursor: default; }

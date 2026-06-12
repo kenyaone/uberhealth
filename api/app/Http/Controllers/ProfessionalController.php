@@ -36,6 +36,42 @@ class ProfessionalController extends Controller
             $query->where('gender', $request->gender);
         }
 
+        if ($request->filled('tribe')) {
+            $query->where('tribe', $request->tribe);
+        }
+
+        if ($request->filled('min_age') || $request->filled('max_age')) {
+            $query->whereNotNull('date_of_birth');
+            if ($request->filled('min_age')) {
+                $maxBirthDate = \Carbon\Carbon::now()->subYears($request->min_age);
+                $query->where('date_of_birth', '<=', $maxBirthDate);
+            }
+            if ($request->filled('max_age')) {
+                $minBirthDate = \Carbon\Carbon::now()->subYears($request->max_age);
+                $query->where('date_of_birth', '>=', $minBirthDate);
+            }
+        }
+
+        if ($request->filled('mode')) {
+            if ($request->mode === 'physical') {
+                $query->where('is_available_physical', true);
+            } elseif ($request->mode === 'virtual') {
+                $query->where('is_available_online', true);
+            }
+        }
+
+        if ($request->filled('lat') && $request->filled('lng')) {
+            $lat = (float) $request->lat;
+            $lng = (float) $request->lng;
+            $radiusKm = (float) ($request->radius_km ?? 50);
+
+            $query->whereRaw("(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) <= ?",
+                [$lat, $lng, $lat, $radiusKm]
+            );
+        } elseif ($request->filled('county')) {
+            $query->where('location_county', $request->county);
+        }
+
         $professionals = $query->orderByDesc('rating')->paginate(20);
 
         // Compute match scores if user is authenticated

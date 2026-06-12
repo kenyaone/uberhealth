@@ -34,16 +34,22 @@ class ConsultationController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'professional_id'  => 'required|exists:professionals,id',
-            'scheduled_at'     => 'required|date|after:now',
-            'duration_minutes' => 'sometimes|integer|in:30,60,90',
-            'share_assessments'=> 'sometimes|boolean',
-            'share_mood_logs'  => 'sometimes|boolean',
-            'payment_method'   => 'sometimes|string|in:paystack,insurance,cash',
+            'professional_id'    => 'required|exists:professionals,id',
+            'scheduled_at'       => 'required|date|after:now',
+            'duration_minutes'   => 'sometimes|integer|in:30,60,90',
+            'mode'               => 'required|string|in:virtual,physical',
+            'consent_accepted'   => 'required|boolean',
+            'share_assessments'  => 'sometimes|boolean',
+            'share_mood_logs'    => 'sometimes|boolean',
+            'payment_method'     => 'sometimes|string|in:paystack,insurance,cash',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        if (!$request->boolean('consent_accepted')) {
+            return response()->json(['error' => 'Consent must be accepted to proceed'], 422);
         }
 
         $user = auth('api')->user();
@@ -53,28 +59,44 @@ class ConsultationController extends Controller
             return response()->json(['error' => 'Professional not available'], 422);
         }
 
+        if ($request->mode === 'physical' && !$professional->is_available_physical) {
+            return response()->json(['error' => 'Professional not available for physical consultations'], 422);
+        }
+
+        $isMinor = $user->date_of_birth && \Carbon\Carbon::parse($user->date_of_birth)->age < 18;
+        if ($isMinor && !$user->parentalConsent()->exists()) {
+            return response()->json(['error' => 'Parental consent required', 'requires_parental_consent' => true], 422);
+        }
+
         $duration = $request->duration_minutes ?? 60;
         $amount = $professional->rate_per_hour * ($duration / 60);
         $consultationId = 'cons-' . bin2hex(random_bytes(4));
         $isCash = $request->input('payment_method') === 'cash';
 
         $consultation = Consultation::create([
-            'consultation_id'   => $consultationId,
-            'user_id'           => $user->id,
-            'professional_id'   => $professional->id,
-            'scheduled_at'      => $request->scheduled_at,
-            'duration_minutes'  => $duration,
-            'status'            => $isCash ? 'confirmed' : 'pending',
-            'amount'            => $amount,
-            'jitsi_room'        => $consultationId,
-            'share_assessments' => $request->boolean('share_assessments', false),
-            'share_mood_logs'   => $request->boolean('share_mood_logs', false),
+            'consultation_id'     => $consultationId,
+            'user_id'             => $user->id,
+            'professional_id'     => $professional->id,
+            'scheduled_at'        => $request->scheduled_at,
+            'duration_minutes'    => $duration,
+            'mode'                => $request->mode,
+            'consent_accepted_at' => now(),
+            'status'              => $isCash ? 'confirmed' : 'draft',
+            'booking_fee_paid'    => false,
+            'amount'              => $amount,
+            'jitsi_room'          => $consultationId,
+            'share_assessments'   => $request->boolean('share_assessments', false),
+            'share_mood_logs'     => $request->boolean('share_mood_logs', false),
         ]);
 
-        $message = $isCash ? 'Session confirmed. Pay at the time of the session.' : 'Consultation booked. Proceed to payment.';
-
-        // Confirmation emails (fire-and-forget)
         $loaded = $consultation->load(['professional.user:id,display_name,email', 'user:id,display_name,email']);
+
+        if ($isCash) {
+            $message = 'Session confirmed. Pay at the time of the session.';
+        } else {
+            $message = 'Booking step 1/4 complete. Next: pay KES 500 booking fee to secure your slot.';
+        }
+
         try {
             if ($user->email) {
                 Mail::to($user->email)->send(new BookingConfirmation(
@@ -92,8 +114,10 @@ class ConsultationController extends Controller
         }
 
         return response()->json([
-            'message'      => $message,
-            'consultation' => $loaded,
+            'message'         => $message,
+            'consultation'    => $loaded,
+            'next_step'       => $isCash ? 'none' : 'booking_fee_payment',
+            'booking_fee_kes' => 500,
         ], 201);
     }
 
@@ -579,5 +603,51 @@ class ConsultationController extends Controller
                   ->orWhereHas('professional', fn($p) => $p->where('user_id', $userId));
             })
             ->first();
+    }
+
+    public function payBookingFee(Request $request, $consultationId)
+    {
+        $request->validate(['phone' => 'required|regex:/^254\d{9}$/']);
+
+        $consultation = Consultation::findOrFail($consultationId);
+        if ($consultation->user_id !== auth('api')->id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if ($consultation->booking_fee_paid) {
+            return response()->json(['error' => 'Booking fee already paid'], 422);
+        }
+
+        if ($consultation->status !== 'draft') {
+            return response()->json(['error' => 'Cannot pay booking fee for this consultation'], 422);
+        }
+
+        $mpesaService = app(\App\Services\MpesaService::class);
+        try {
+            $response = $mpesaService->stkPush(
+                $request->phone,
+                500,
+                'Booking Fee',
+                'BOOKFEE'
+            );
+
+            $payment = \App\Models\Payment::create([
+                'consultation_id' => $consultation->id,
+                'payment_type' => 'booking_fee',
+                'amount' => 500,
+                'phone' => $request->phone,
+                'mpesa_checkout_id' => $response['CheckoutRequestID'] ?? null,
+                'status' => 'pending',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'M-Pesa prompt sent. Enter your PIN.',
+                'checkout_id' => $response['CheckoutRequestID'] ?? null,
+                'payment_id' => $payment->id,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Payment failed: ' . $e->getMessage()], 400);
+        }
     }
 }

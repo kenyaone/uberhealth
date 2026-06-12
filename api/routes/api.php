@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\BurnoutController;
 use App\Http\Controllers\CaseloadController;
+use App\Http\Controllers\ParentalConsentController;
 use App\Http\Controllers\ClinicalReceiptController;
 use App\Http\Controllers\GoalController;
 use App\Http\Controllers\MedicationController;
 use App\Http\Controllers\PromoCodeController;
 use App\Http\Controllers\SafetyPlanController;
+use App\Http\Controllers\TreatmentPlanController;
 use App\Http\Controllers\WaitlistController;
 use App\Http\Controllers\JournalController;
 use App\Http\Controllers\PeerMentorController;
@@ -46,6 +49,8 @@ Route::get('/crisis/hotlines', [CrisisController::class, 'hotlines']);
 Route::get('/subscriptions/plans', [SubscriptionController::class, 'plans']);
 
 Route::get('/corporate/tiers', [CorporateController::class, 'tiers']);
+
+Route::get('/burnout/questions', [BurnoutController::class, 'questions']);
 
 // M-Pesa callbacks (called by Safaricom, no token)
 Route::post('/payments/callback', [PaymentController::class, 'callback']);
@@ -110,6 +115,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/consultations/{id}/notes-request', [ConsultationController::class, 'requestNotes']);
     Route::post('/consultations/{id}/follow-up', [ConsultationController::class, 'bookFollowUp']);
     Route::put('/consultations/{id}/reschedule', [ConsultationController::class, 'reschedule']);
+    Route::post('/consultations/{id}/pay-booking-fee', [ConsultationController::class, 'payBookingFee']);
 
     // PHR — Mood
     Route::get('/phr/mood/stats', [PHRController::class, 'moodStats']);
@@ -245,6 +251,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/referrals', [ReferralController::class, 'store']);
     Route::get('/referrals', [ReferralController::class, 'index']);
     Route::get('/referrals/mine', [ReferralController::class, 'myReferrals']);
+    Route::post('/referrals/{id}/approve', [ReferralController::class, 'approve']);
+    Route::post('/referrals/{id}/reject', [ReferralController::class, 'reject']);
 
     // Support groups
     Route::get('/groups', [SupportGroupController::class, 'index']);
@@ -260,6 +268,21 @@ Route::middleware('auth:api')->group(function () {
 
     // Continuity — patient's most recent completed professional
     Route::get('/consultations/my-therapist', [ConsultationController::class, 'myTherapist']);
+
+    // Parental Consent (for minors)
+    Route::post('/parental-consent/request', [ParentalConsentController::class, 'request']);
+    Route::post('/parental-consent/verify', [ParentalConsentController::class, 'verify']);
+
+    // Treatment Plans
+    Route::post('/treatment-plans', [TreatmentPlanController::class, 'store']);
+    Route::get('/treatment-plans/{consultationId}', [TreatmentPlanController::class, 'show']);
+    Route::put('/treatment-plans/{id}', [TreatmentPlanController::class, 'update']);
+
+    // Burnout Assessment (ProQOL-5)
+    Route::post('/burnout/pay', [BurnoutController::class, 'initiatePayment']);
+    Route::post('/burnout/assess', [BurnoutController::class, 'assess']);
+    Route::post('/burnout/{id}/send-report', [BurnoutController::class, 'sendReport']);
+    Route::get('/burnout/my-reports', [BurnoutController::class, 'myReports']);
 
     // Admin routes (role check via middleware)
     Route::middleware('can:admin')->prefix('admin')->group(function () {
@@ -295,5 +318,7 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/reviews/flagged', [SessionFeedbackController::class, 'adminFlagged']);
         Route::put('/reviews/{id}/clear', [SessionFeedbackController::class, 'adminClear']);
         Route::delete('/reviews/{id}', [SessionFeedbackController::class, 'adminRemove']);
+        // Burnout assessment reports
+        Route::get('/burnout/reports', [BurnoutController::class, 'allReports']);
     });
 });
