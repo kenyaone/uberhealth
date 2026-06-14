@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
-import { Plus, FileText, Trash2, Edit2, Eye, Loader2 } from 'lucide-react'
+import { Plus, FileText, Trash2, Edit2, Eye, Loader2, CheckCircle } from 'lucide-react'
 
 interface TreatmentPlan {
   id: number
@@ -17,6 +17,7 @@ interface TreatmentPlan {
   created_at: string
   updated_at: string
   user?: { id: number; display_name: string }
+  professional?: { user?: { display_name: string; cpb_license?: string }; has_cpb?: boolean }
 }
 
 export default function TreatmentPlanManagement() {
@@ -160,13 +161,18 @@ export default function TreatmentPlanManagement() {
             <div key={plan.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6">
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h3 className="text-lg font-semibold text-gray-900">
                       {plan.user?.display_name || 'Unknown Patient'}
                     </h3>
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${getStatusColor(plan.status)}`}>
                       {plan.status}
                     </span>
+                    {plan.professional?.has_cpb && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800 font-semibold flex items-center gap-1">
+                        <CheckCircle size={12} /> CPB Verified
+                      </span>
+                    )}
                   </div>
                   <p className="text-gray-600 text-sm line-clamp-2 mb-3">{plan.description}</p>
 
@@ -260,7 +266,14 @@ export default function TreatmentPlanManagement() {
             <div className="p-6 space-y-6">
               {/* Header */}
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{selectedPlan.user?.display_name}</h3>
+                <div className="flex items-center gap-3 mb-3 flex-wrap">
+                  <h3 className="text-xl font-bold text-gray-900">{selectedPlan.user?.display_name}</h3>
+                  {selectedPlan.professional?.has_cpb && (
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 font-bold flex items-center gap-1">
+                      <CheckCircle size={14} /> CPB Verified
+                    </span>
+                  )}
+                </div>
                 <span className={`text-sm px-3 py-1 rounded-full font-medium ${getStatusColor(selectedPlan.status)}`}>
                   {selectedPlan.status}
                 </span>

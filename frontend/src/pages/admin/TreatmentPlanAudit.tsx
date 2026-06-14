@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { FileText, User, DollarSign, Calendar, AlertCircle, Filter } from 'lucide-react'
+import { FileText, User, DollarSign, Calendar, AlertCircle, Filter, CheckCircle } from 'lucide-react'
 
 interface TreatmentPlan {
   id: number
@@ -11,7 +11,7 @@ interface TreatmentPlan {
   status: string
   created_at: string
   updated_at: string
-  professional?: { user: { display_name: string } }
+  professional?: { user: { display_name: string }; has_cpb?: boolean }
   user?: { display_name: string }
 }
 
@@ -213,6 +213,7 @@ export default function TreatmentPlanAudit() {
                   <tr>
                     <th className="px-6 py-3 text-left font-medium text-gray-700">ID</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-700">Professional</th>
+                    <th className="px-6 py-3 text-center font-medium text-gray-700">CPB</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-700">Patient</th>
                     <th className="px-6 py-3 text-left font-medium text-gray-700">Description</th>
                     <th className="px-6 py-3 text-right font-medium text-gray-700">Cost (KES)</th>
@@ -225,6 +226,13 @@ export default function TreatmentPlanAudit() {
                     <tr key={plan.id} className="border-b border-gray-200 hover:bg-gray-50">
                       <td className="px-6 py-4 text-gray-900 font-medium">#{plan.id}</td>
                       <td className="px-6 py-4 text-gray-900">{plan.professional?.user?.display_name}</td>
+                      <td className="px-6 py-4 text-center">
+                        {plan.professional?.has_cpb ? (
+                          <CheckCircle size={18} className="text-blue-600 inline" />
+                        ) : (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-gray-600">{plan.user?.display_name}</td>
                       <td className="px-6 py-4 text-gray-600 truncate max-w-xs">{plan.description}</td>
                       <td className="px-6 py-4 text-right font-semibold text-gray-900">

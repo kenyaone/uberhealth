@@ -403,6 +403,8 @@ class ProfessionalController extends Controller
             'avatar'                   => $prof->user->avatar ?? null,
             'bio'                      => $prof->bio,
             'kmpdc_license'            => $prof->kmpdc_license,
+            'cpb_license'              => $prof->cpb_license,
+            'has_cpb'                  => !empty($prof->cpb_license),
             'verification_status'      => $prof->verification_status,
             'rate_per_hour'            => $prof->rate_per_hour,
             'years_experience'         => $prof->years_experience,
