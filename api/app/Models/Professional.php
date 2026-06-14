@@ -32,6 +32,8 @@ class Professional extends Model
         'date_of_birth',
         'cpb_license',
         'is_available_physical',
+        'service_areas',
+        'current_service_area',
     ];
 
     protected function casts(): array
@@ -45,6 +47,7 @@ class Professional extends Model
             'latitude' => 'float',
             'longitude' => 'float',
             'date_of_birth' => 'date',
+            'service_areas' => 'array',
         ];
     }
 

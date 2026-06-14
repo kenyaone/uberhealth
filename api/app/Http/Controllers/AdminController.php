@@ -325,4 +325,83 @@ class AdminController extends Controller
             'Content-Disposition' => 'attachment; filename="users_export.csv"',
         ]);
     }
+
+    public function treatmentPlans(Request $request)
+    {
+        $query = \App\Models\TreatmentPlan::with([
+            'professional:id,user_id',
+            'professional.user:id,display_name',
+            'user:id,display_name,username',
+        ]);
+
+        // Filter by professional
+        if ($request->filled('professional_id')) {
+            $query->where('professional_id', $request->professional_id);
+        }
+
+        // Filter by status (draft, active, completed, cancelled)
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by date range
+        if ($request->filled('from_date')) {
+            $query->whereDate('created_at', '>=', $request->from_date);
+        }
+        if ($request->filled('to_date')) {
+            $query->whereDate('created_at', '<=', $request->to_date);
+        }
+
+        // Filter by patient
+        if ($request->filled('patient_id')) {
+            $query->where('user_id', $request->patient_id);
+        }
+
+        $plans = $query->orderByDesc('created_at')->paginate(20);
+
+        return response()->json($plans);
+    }
+
+    public function treatmentPlanDetail($id)
+    {
+        $plan = \App\Models\TreatmentPlan::with([
+            'professional.user:id,display_name,email,phone',
+            'user:id,display_name,username,email,phone',
+            'consultation:id,scheduled_at,status',
+        ])->findOrFail($id);
+
+        return response()->json(['plan' => $plan]);
+    }
+
+    public function treatmentPlanAudit(Request $request)
+    {
+        // Get all treatment plans with audit trail
+        $plans = \App\Models\TreatmentPlan::with([
+            'professional.user:id,display_name',
+            'user:id,display_name',
+        ])
+        ->orderByDesc('updated_at')
+        ->get(['id', 'professional_id', 'user_id', 'description', 'total_cost', 'status', 'created_at', 'updated_at']);
+
+        // Group by professional for accountability report
+        $byProfessional = $plans->groupBy('professional_id')->map(function ($group) {
+            return [
+                'professional' => $group->first()->professional->user->display_name ?? 'Unknown',
+                'professional_id' => $group->first()->professional_id,
+                'total_plans' => $group->count(),
+                'active_plans' => $group->where('status', 'active')->count(),
+                'draft_plans' => $group->where('status', 'draft')->count(),
+                'total_value_kes' => (int) $group->sum('total_cost'),
+                'last_updated' => $group->first()->updated_at,
+            ];
+        })
+        ->sortByDesc('total_plans')
+        ->values();
+
+        return response()->json([
+            'total_plans' => $plans->count(),
+            'by_professional' => $byProfessional,
+            'all_plans' => $plans,
+        ]);
+    }
 }

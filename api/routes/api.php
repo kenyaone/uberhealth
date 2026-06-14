@@ -265,6 +265,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/availability/mine', [AvailabilityController::class, 'mine']);
     Route::put('/availability', [AvailabilityController::class, 'update']);
     Route::post('/professional/set-online', [ProfessionalController::class, 'setOnline']);
+    Route::put('/professional/service-areas', [ProfessionalController::class, 'updateServiceAreas']);
 
     // Continuity — patient's most recent completed professional
     Route::get('/consultations/my-therapist', [ConsultationController::class, 'myTherapist']);
@@ -275,8 +276,10 @@ Route::middleware('auth:api')->group(function () {
 
     // Treatment Plans
     Route::post('/treatment-plans', [TreatmentPlanController::class, 'store']);
+    Route::get('/treatment-plans/my-prescribed', [TreatmentPlanController::class, 'myPrescribedPlans']);
     Route::get('/treatment-plans/{consultationId}', [TreatmentPlanController::class, 'show']);
     Route::put('/treatment-plans/{id}', [TreatmentPlanController::class, 'update']);
+    Route::delete('/treatment-plans/{id}', [TreatmentPlanController::class, 'destroy']);
 
     // Burnout Assessment (ProQOL-5)
     Route::post('/burnout/pay', [BurnoutController::class, 'initiatePayment']);
@@ -320,5 +323,10 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('/reviews/{id}', [SessionFeedbackController::class, 'adminRemove']);
         // Burnout assessment reports
         Route::get('/burnout/reports', [BurnoutController::class, 'allReports']);
+
+        // Treatment plan accountability
+        Route::get('/treatment-plans', [AdminController::class, 'treatmentPlans']);
+        Route::get('/treatment-plans/:id', [AdminController::class, 'treatmentPlanDetail']);
+        Route::get('/treatment-plans-audit', [AdminController::class, 'treatmentPlanAudit']);
     });
 });

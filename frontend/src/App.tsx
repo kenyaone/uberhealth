@@ -59,6 +59,8 @@ import BurnoutReport from './pages/assessments/BurnoutReport'
 import ParentalConsent from './pages/consultation/ParentalConsent'
 import ClientRiskAssessment from './pages/assessment/ClientRiskAssessment'
 import ClinicalDashboard from './pages/assessment/ClinicalDashboard'
+import TreatmentPlanAudit from './pages/admin/TreatmentPlanAudit'
+import TreatmentPlanManagement from './pages/professional/TreatmentPlanManagement'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -105,6 +107,7 @@ export default function App() {
           <Route path="/apply" element={<ApplyAsProfessional />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/revenue" element={<RevenueDashboard />} />
+          <Route path="/admin/treatment-plans" element={<TreatmentPlanAudit />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/subscribe" element={<Subscribe />} />
           <Route path="/corporate" element={<Corporate />} />
@@ -134,6 +137,7 @@ export default function App() {
           <Route path="/parental-consent" element={<ParentalConsent />} />
           <Route path="/assessment/client-risk" element={<ClientRiskAssessment />} />
           <Route path="/assessment/clinical-dashboard" element={<ClinicalDashboard />} />
+          <Route path="/treatment-plans" element={<TreatmentPlanManagement />} />
           <Route path="/treatment-plan/:consultationId" element={<TreatmentPlanForm />} />
         </Route>
       </Routes>

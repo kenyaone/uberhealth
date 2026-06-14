@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
+import { ServiceAreaManager } from '../professional/ServiceAreaManager'
+import { ServiceAreaSelector } from '../professional/ServiceAreaSelector'
 import {
   Calendar, DollarSign, Star, Clock, CheckCircle,
   AlertCircle, Users, TrendingUp, Settings, PlayCircle, Plus, X, Loader2,
-  Wifi, WifiOff
+  Wifi, WifiOff, MapPin, FileText
 } from 'lucide-react'
 
 interface Consultation {
@@ -27,6 +29,8 @@ interface ProfData {
     total_reviews: number
     is_available_online: boolean
     is_accepting_new_patients: boolean
+    service_areas?: string[]
+    current_service_area?: string
     specializations: { id: number; name: string }[]
     languages: { id: number; name: string }[]
   }
@@ -66,7 +70,8 @@ export default function ProfessionalDashboard() {
   const [directError, setDirectError] = useState('')
   const [isOnline, setIsOnline] = useState(false)
   const [onlineLoading, setOnlineLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'sessions' | 'treatment-plans' | 'referrals'>('sessions')
+  const [showServiceAreaSelector, setShowServiceAreaSelector] = useState(false)
+  const [activeTab, setActiveTab] = useState<'sessions' | 'treatment-plans' | 'referrals' | 'settings'>('sessions')
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchDashboard = () =>
@@ -88,20 +93,38 @@ export default function ProfessionalDashboard() {
     if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null }
   }
 
-  const toggleOnline = async () => {
+  const setOnlineWithArea = async (serviceArea?: string) => {
     setOnlineLoading(true)
     try {
-      const r = await api.post('/professional/set-online', { online: !isOnline })
+      const payload: any = { online: !isOnline }
+      if (serviceArea) {
+        payload.service_area = serviceArea
+      }
+      const r = await api.post('/professional/set-online', payload)
       const next = r.data.is_available_online
       setIsOnline(next)
+      setShowServiceAreaSelector(false)
       if (next) {
         api.post('/presence/heartbeat', { page: '/dashboard' }).catch(() => {})
         startHeartbeat()
       } else {
         stopHeartbeat()
       }
-    } catch { /* ignore */ } finally {
+    } catch (e: any) {
+      const errorMsg = e.response?.data?.error
+      if (errorMsg?.includes('service area')) {
+        setShowServiceAreaSelector(true)
+      }
+    } finally {
       setOnlineLoading(false)
+    }
+  }
+
+  const handleToggleOnline = () => {
+    if (!isOnline && data?.professional?.service_areas?.length) {
+      setShowServiceAreaSelector(true)
+    } else {
+      setOnlineWithArea()
     }
   }
 
@@ -184,7 +207,7 @@ export default function ProfessionalDashboard() {
           {/* Online / Offline toggle */}
           {isVerified && (
             <button
-              onClick={toggleOnline}
+              onClick={handleToggleOnline}
               disabled={onlineLoading}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all border-2 ${
                 isOnline
@@ -211,6 +234,16 @@ export default function ProfessionalDashboard() {
           </span>
         </div>
       </div>
+
+      {/* Service Area Selector Modal */}
+      {showServiceAreaSelector && data?.professional?.service_areas && (
+        <ServiceAreaSelector
+          serviceAreas={data.professional.service_areas}
+          onSelect={(area) => setOnlineWithArea(area)}
+          onCancel={() => setShowServiceAreaSelector(false)}
+          isLoading={onlineLoading}
+        />
+      )}
 
       {/* Direct Booking Modal */}
       {showDirectBook && (
@@ -394,6 +427,16 @@ export default function ProfessionalDashboard() {
             >
               Pending Referrals
             </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`pb-3 px-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'settings'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Settings
+            </button>
           </div>
         </div>
 
@@ -442,30 +485,16 @@ export default function ProfessionalDashboard() {
 
         {/* Treatment Plans Tab */}
         {activeTab === 'treatment-plans' && (
-          <div className="card">
-            <h3 className="font-semibold text-gray-900 mb-4">Treatment Plans</h3>
-            <p className="text-gray-500 text-sm mb-4">View and manage treatment plans you've prescribed to patients.</p>
-            <div className="space-y-3">
-              <div className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors cursor-pointer">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Patient Recovery Plan</h4>
-                    <p className="text-xs text-gray-500 mt-1">Created 2 days ago · 8 sessions planned</p>
-                  </div>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Active</span>
-                </div>
-              </div>
-              <div className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors cursor-pointer">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Behavioral Intervention Plan</h4>
-                    <p className="text-xs text-gray-500 mt-1">Created 1 week ago · 5 sessions planned</p>
-                  </div>
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">In Progress</span>
-                </div>
-              </div>
-            </div>
-            <p className="text-xs text-gray-400 text-center mt-6">Full treatment plan management coming soon</p>
+          <div className="card text-center py-12">
+            <FileText size={48} className="mx-auto text-gray-300 mb-4" />
+            <h3 className="font-semibold text-gray-900 mb-2">Manage Your Treatment Plans</h3>
+            <p className="text-gray-500 text-sm mb-6">Create, view, and manage all treatment plans you've prescribed to patients.</p>
+            <Link
+              to="/treatment-plans"
+              className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            >
+              <FileText size={16} /> Go to Treatment Plans
+            </Link>
           </div>
         )}
 
@@ -503,6 +532,21 @@ export default function ProfessionalDashboard() {
                   <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Approved</span>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Settings Tab */}
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <MapPin size={20} /> Service Area Settings
+              </h2>
+              <ServiceAreaManager
+                initialAreas={data?.professional?.service_areas ?? []}
+                onSave={() => fetchDashboard()}
+              />
             </div>
           </div>
         )}

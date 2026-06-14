@@ -340,6 +340,18 @@ class ProfessionalController extends Controller
         $go = $request->boolean('online');
         $professional->update(['is_available_online' => $go]);
 
+        // When going online, require service area selection
+        if ($go && $request->filled('service_area')) {
+            $professional->update(['current_service_area' => $request->service_area]);
+        } elseif ($go && !$request->filled('service_area') && $professional->service_areas) {
+            return response()->json(
+                ['error' => 'Please select a service area', 'service_areas' => $professional->service_areas],
+                422
+            );
+        } elseif (!$go) {
+            $professional->update(['current_service_area' => null]);
+        }
+
         // Update presence record immediately
         \App\Models\UserPresence::updateOrCreate(
             ['user_id' => $user->id],
@@ -350,7 +362,36 @@ class ProfessionalController extends Controller
             ]
         );
 
-        return response()->json(['is_available_online' => $go]);
+        return response()->json([
+            'is_available_online' => $go,
+            'current_service_area' => $professional->current_service_area,
+        ]);
+    }
+
+    public function updateServiceAreas(Request $request)
+    {
+        $user = auth('api')->user();
+        $professional = Professional::where('user_id', $user->id)->first();
+
+        if (!$professional) {
+            return response()->json(['error' => 'Professional profile not found'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'service_areas' => 'required|array|min:1',
+            'service_areas.*' => 'required|string|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        $professional->update(['service_areas' => $request->service_areas]);
+
+        return response()->json([
+            'message' => 'Service areas updated',
+            'service_areas' => $professional->service_areas,
+        ]);
     }
 
     private function safeProfessional(Professional $prof): array
@@ -372,6 +413,10 @@ class ProfessionalController extends Controller
             'is_available_online'      => $prof->is_available_online,
             'is_accepting_new_patients'=> $prof->is_accepting_new_patients,
             'profile_photo'            => $prof->profile_photo,
+            'location_city'            => $prof->location_city,
+            'location_county'          => $prof->location_county,
+            'service_areas'            => $prof->service_areas ?? [],
+            'current_service_area'     => $prof->current_service_area,
             'specializations'          => $prof->relationLoaded('specializations') ? $prof->specializations : [],
             'languages'                => $prof->relationLoaded('languages') ? $prof->languages : [],
             'availability'             => $prof->relationLoaded('availability') ? $prof->availability : [],

@@ -92,4 +92,36 @@ class TreatmentPlanController extends Controller
 
         return response()->json(['success' => true, 'plan' => $plan]);
     }
+
+    public function myPrescribedPlans()
+    {
+        $user = Auth::user();
+        if (!$user->professional) {
+            return response()->json(['success' => false, 'message' => 'Not a professional'], 403);
+        }
+
+        $plans = TreatmentPlan::where('professional_id', $user->professional->id)
+            ->with(['user:id,display_name,avatar', 'consultation'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json(['success' => true, 'plans' => $plans]);
+    }
+
+    public function destroy($id)
+    {
+        $plan = TreatmentPlan::findOrFail($id);
+
+        if ($plan->professional_id !== Auth::user()->professional->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        if ($plan->status !== 'draft') {
+            return response()->json(['success' => false, 'message' => 'Can only delete draft plans'], 422);
+        }
+
+        $plan->delete();
+
+        return response()->json(['success' => true, 'message' => 'Treatment plan deleted']);
+    }
 }
