@@ -81,6 +81,7 @@ interface OnlineDoc {
   user_id: number
   display_name: string
   years_experience: number
+  location_city?: string
   specializations: { id: number; name: string }[]
 }
 
@@ -151,8 +152,8 @@ export default function Landing() {
                         <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> Online
                       </span>
                     </div>
-                    <div className="text-orange-100 text-xs truncate mt-0.5">{doc.specializations?.slice(0, 2).map(s => s.name).join(' · ') || 'Mental Health'}</div>
-                    <div className="text-orange-200 text-xs mt-0.5 flex items-center gap-1"><CheckCircle size={10} /> {doc.years_experience} yrs exp · KMPDC Licensed</div>
+                    <div className="text-orange-100 text-xs truncate mt-0.5">{doc.specializations?.slice(0, 1).map(s => s.name).join(', ') || 'Mental Health'}</div>
+                    <div className="text-orange-200 text-xs mt-0.5 flex items-center gap-1">📍 {doc.location_city || 'Nairobi'} · {doc.years_experience} yrs</div>
                   </div>
                   <ArrowRight size={13} className="text-white/60 group-hover:text-white flex-shrink-0 transition-colors" />
                 </Link>

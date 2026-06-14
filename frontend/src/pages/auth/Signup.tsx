@@ -37,7 +37,13 @@ export default function Signup() {
       navigate(res.data.user.role === 'professional' ? '/apply' : '/dashboard')
     } catch (err: any) {
       const errs = err.response?.data
-      setError(errs?.username?.[0] || errs?.password?.[0] || errs?.email?.[0] || 'Signup failed. Try again.')
+      const messages = []
+      if (errs?.username) messages.push(errs.username[0])
+      if (errs?.password) messages.push(errs.password[0])
+      if (errs?.email) messages.push(errs.email[0])
+      if (errs?.display_name) messages.push(errs.display_name[0])
+      if (errs?.error) messages.push(errs.error)
+      setError(messages.length > 0 ? messages.join(' ') : 'Signup failed. Try again.')
     } finally {
       setLoading(false)
     }

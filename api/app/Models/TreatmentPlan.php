@@ -20,6 +20,7 @@ class TreatmentPlan extends Model
         'total_cost',
         'status',
         'paid_at',
+        'schedule_details',
     ];
 
     protected function casts(): array
@@ -28,6 +29,7 @@ class TreatmentPlan extends Model
             'cost_per_session' => 'float',
             'total_cost' => 'float',
             'paid_at' => 'datetime',
+            'schedule_details' => 'array',
         ];
     }
 

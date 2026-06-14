@@ -37,6 +37,7 @@ import Medications from './pages/phr/Medications'
 import Caseload from './pages/professional/Caseload'
 import CaseloadPatient from './pages/professional/CaseloadPatient'
 import Payouts from './pages/professional/Payouts'
+import TreatmentPlanForm from './pages/professional/TreatmentPlanForm'
 import GuidedExercises from './pages/tools/GuidedExercises'
 import ReferralPromo from './pages/profile/ReferralPromo'
 import Journal from './pages/phr/Journal'
@@ -133,6 +134,7 @@ export default function App() {
           <Route path="/parental-consent" element={<ParentalConsent />} />
           <Route path="/assessment/client-risk" element={<ClientRiskAssessment />} />
           <Route path="/assessment/clinical-dashboard" element={<ClinicalDashboard />} />
+          <Route path="/treatment-plan/:consultationId" element={<TreatmentPlanForm />} />
         </Route>
       </Routes>
     </BrowserRouter>

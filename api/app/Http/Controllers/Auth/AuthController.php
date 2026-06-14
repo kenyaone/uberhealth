@@ -26,7 +26,7 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()->first()], 422);
+            return response()->json($validator->errors(), 422);
         }
 
         $role = in_array($request->role, ['user', 'professional']) ? $request->role : 'user';

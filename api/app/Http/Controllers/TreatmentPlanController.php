@@ -17,6 +17,7 @@ class TreatmentPlanController extends Controller
             'duration_weeks' => 'required|integer|min:1',
             'sessions_per_week' => 'required|integer|min:1',
             'cost_per_session' => 'required|numeric|min:100',
+            'schedule_details' => 'nullable|json',
         ]);
 
         $consultation = Consultation::findOrFail($request->consultation_id);
@@ -37,6 +38,7 @@ class TreatmentPlanController extends Controller
             'cost_per_session' => $request->cost_per_session,
             'total_cost' => $totalCost,
             'status' => 'draft',
+            'schedule_details' => $request->schedule_details ? json_decode($request->schedule_details, true) : null,
         ]);
 
         return response()->json([
