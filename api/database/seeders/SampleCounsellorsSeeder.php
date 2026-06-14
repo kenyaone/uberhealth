@@ -15,7 +15,7 @@ class SampleCounsellorsSeeder extends Seeder
             [
                 'name' => 'Dr. Sarah Mwangi',
                 'email' => 'sarah.mwangi@example.com',
-                'location_city' => 'Nairobi',
+                'location_city' => 'Westlands - Chiromo Road',
                 'location_county' => 'Nairobi County',
                 'specialization' => 'Depression & Anxiety',
                 'bio' => 'Specializes in cognitive behavioral therapy for depression and anxiety disorders.',
@@ -26,7 +26,7 @@ class SampleCounsellorsSeeder extends Seeder
             [
                 'name' => 'James Kipchoge',
                 'email' => 'james.kipchoge@example.com',
-                'location_city' => 'Mombasa',
+                'location_city' => 'Mombasa - Nkrumah Road',
                 'location_county' => 'Mombasa County',
                 'specialization' => 'Addiction Recovery',
                 'bio' => 'Expert in substance abuse treatment and recovery programs.',
@@ -37,7 +37,7 @@ class SampleCounsellorsSeeder extends Seeder
             [
                 'name' => 'Dr. Grace Ochieng',
                 'email' => 'grace.ochieng@example.com',
-                'location_city' => 'Kisumu',
+                'location_city' => 'Kisumu - Oginga Odinga Street',
                 'location_county' => 'Kisumu County',
                 'specialization' => 'Trauma & PTSD',
                 'bio' => 'Specializes in trauma-focused therapy and PTSD treatment.',
@@ -48,7 +48,7 @@ class SampleCounsellorsSeeder extends Seeder
             [
                 'name' => 'Peter Okonkwo',
                 'email' => 'peter.okonkwo@example.com',
-                'location_city' => 'Nakuru',
+                'location_city' => 'Nakuru - Kenyatta Avenue',
                 'location_county' => 'Nakuru County',
                 'specialization' => 'Couples & Family Therapy',
                 'bio' => 'Provides relationship counseling and family therapy services.',
@@ -59,7 +59,7 @@ class SampleCounsellorsSeeder extends Seeder
             [
                 'name' => 'Dr. Amara Hassan',
                 'email' => 'amara.hassan@example.com',
-                'location_city' => 'Nairobi',
+                'location_city' => 'Upper Hill - Limuru Road',
                 'location_county' => 'Nairobi County',
                 'specialization' => 'Grief Counseling',
                 'bio' => 'Provides compassionate grief and bereavement counseling.',
@@ -70,7 +70,7 @@ class SampleCounsellorsSeeder extends Seeder
             [
                 'name' => 'David Musyoka',
                 'email' => 'david.musyoka@example.com',
-                'location_city' => 'Nairobi',
+                'location_city' => 'Kilimani - Ngong Road',
                 'location_county' => 'Nairobi County',
                 'specialization' => 'Gambling Disorder',
                 'bio' => 'Specialist in gambling addiction treatment and financial recovery.',

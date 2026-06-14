@@ -38,11 +38,11 @@ export default function TreatmentPlanView({ plan }: TreatmentPlanViewProps) {
           </div>
           <div>
             <p className="text-xs text-gray-600 font-semibold uppercase">Per Session</p>
-            <p className="text-2xl font-black text-gray-900 mt-1">₾{plan.cost_per_session.toLocaleString()}</p>
+            <p className="text-2xl font-black text-gray-900 mt-1">KES{plan.cost_per_session.toLocaleString()}</p>
           </div>
           <div>
             <p className="text-xs text-gray-600 font-semibold uppercase">Total Cost</p>
-            <p className="text-2xl font-black text-blue-600 mt-1">₾{plan.total_cost.toLocaleString()}</p>
+            <p className="text-2xl font-black text-blue-600 mt-1">KES{plan.total_cost.toLocaleString()}</p>
           </div>
         </div>
       </div>
@@ -100,7 +100,7 @@ export default function TreatmentPlanView({ plan }: TreatmentPlanViewProps) {
             </div>
             <div>
               <p className="text-sm text-gray-600">Total Amount Due</p>
-              <p className="text-2xl font-black text-gray-900">₾{plan.total_cost.toLocaleString()}</p>
+              <p className="text-2xl font-black text-gray-900">KES{plan.total_cost.toLocaleString()}</p>
             </div>
           </div>
           <div className={`px-4 py-2 rounded-full font-semibold text-sm ${

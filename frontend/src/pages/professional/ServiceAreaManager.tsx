@@ -16,21 +16,29 @@ export const ServiceAreaManager: React.FC<ServiceAreaManagerProps> = ({
   const [message, setMessage] = useState('');
 
   const suggestedAreas = [
-    'Nairobi Central',
-    'Eastlands',
-    'Westlands',
-    'South B',
-    'South C',
-    'Upper Hill',
-    'Kilimani',
-    'Lavington',
-    'Karen',
-    'Mombasa',
-    'Kisumu',
-    'Nakuru',
-    'Eldoret',
-    'Thika',
-    'Kikuyu',
+    // Nairobi - Central Business District
+    'Nairobi CBD - Kenyatta Avenue',
+    'Westlands - Chiromo Road',
+    'Westlands - Mpesi Lane',
+    'Upper Hill - Limuru Road',
+    'Kilimani - Ngong Road',
+    'Lavington - Valley Road',
+    'Karen - Karen Road',
+    'South B - Langata Road',
+    'South C - Mombasa Road',
+    'Eastlands - Embakasi',
+    'Donholm - Langata Road',
+    'Kileleshwa - Gikambura Road',
+    // Mombasa
+    'Mombasa - Nkrumah Road',
+    'Mombasa - Jomo Kenyatta Avenue',
+    'Mombasa - Port Road',
+    // Other Cities
+    'Kisumu - Oginga Odinga Street',
+    'Nakuru - Kenyatta Avenue',
+    'Eldoret - Kenyatta Street',
+    'Thika - Murang\'a Road',
+    'Kikuyu - Limuru Road',
   ];
 
   const handleAddArea = (area: string) => {

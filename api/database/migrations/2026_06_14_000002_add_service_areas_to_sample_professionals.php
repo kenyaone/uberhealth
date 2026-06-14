@@ -9,12 +9,12 @@ return new class extends Migration
     {
         // Add default service areas to existing sample professionals
         $serviceAreas = [
-            1 => ['Nairobi Central', 'Westlands', 'Upper Hill'],
-            2 => ['Mombasa', 'Mombasa CBD'],
-            3 => ['Kisumu', 'Kisumu CBD'],
-            4 => ['Nakuru', 'Nakuru CBD'],
-            5 => ['Nairobi', 'Karen', 'Lavington'],
-            6 => ['Nairobi', 'South B', 'South C'],
+            1 => ['Westlands - Chiromo Road', 'Westlands - Mpesi Lane', 'Upper Hill - Limuru Road'],
+            2 => ['Mombasa - Nkrumah Road', 'Mombasa - Jomo Kenyatta Avenue'],
+            3 => ['Kisumu - Oginga Odinga Street', 'Kisumu - Kenyatta Avenue'],
+            4 => ['Nakuru - Kenyatta Avenue', 'Nakuru - Jomo Kenyatta Street'],
+            5 => ['Upper Hill - Limuru Road', 'Karen - Karen Road', 'Lavington - Valley Road'],
+            6 => ['Kilimani - Ngong Road', 'South B - Langata Road', 'South C - Mombasa Road'],
         ];
 
         foreach ($serviceAreas as $profId => $areas) {

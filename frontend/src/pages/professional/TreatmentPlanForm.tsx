@@ -145,10 +145,10 @@ export default function TreatmentPlanForm() {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex justify-between items-center">
                 <span className="text-gray-700 font-semibold">Total Treatment Cost:</span>
-                <span className="text-2xl font-black text-blue-600">₾{totalCost.toLocaleString()}</span>
+                <span className="text-2xl font-black text-blue-600">KES{totalCost.toLocaleString()}</span>
               </div>
               <p className="text-gray-600 text-xs mt-2">
-                {formData.duration_weeks} weeks × {formData.sessions_per_week} sessions/week × ₾{formData.cost_per_session}
+                {formData.duration_weeks} weeks × {formData.sessions_per_week} sessions/week × KES{formData.cost_per_session}
               </p>
             </div>
 
