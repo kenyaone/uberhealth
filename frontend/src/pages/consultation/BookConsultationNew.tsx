@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, CheckCircle, Clock, Video, MapPin, Shield, AlertCircle } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCircle, Clock, Video, MapPin, Shield, AlertCircle, CreditCard, Heart, Banknote } from 'lucide-react'
 import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
 import type { Professional } from '../../types'
@@ -8,6 +8,7 @@ import ConsentForm from '../../components/ConsentForm'
 
 type BookStep = 'mode' | 'consent' | 'fee' | 'confirm' | 'processing' | 'success'
 type SessionMode = 'virtual' | 'physical'
+type PayMethod = 'paystack' | 'pesapal' | 'insurance' | 'cash'
 
 interface BookingData {
   mode: SessionMode
@@ -34,6 +35,7 @@ export default function BookConsultation() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [consultationId, setConsultationId] = useState<string | null>(null)
+  const [payMethod, setPayMethod] = useState<PayMethod>('pesapal')
   const BOOKING_FEE = 500 // KES
 
   useEffect(() => {
@@ -77,13 +79,65 @@ export default function BookConsultation() {
         booking_fee: BOOKING_FEE,
       })
 
-      setConsultationId(res.data.consultation_id)
+      const consultationId = res.data.consultation_id
+      setConsultationId(consultationId)
       setStep('processing')
 
-      // Simulate payment processing
-      setTimeout(() => setStep('success'), 2000)
+      // Handle payment based on selected method
+      if (payMethod === 'pesapal') {
+        // Initiate PesaPal payment
+        const payRes = await api.post('/payments/pesapal/initiate', {
+          consultation_id: consultationId,
+          phone: (user as any)?.phone_number,
+          email: (user as any)?.email,
+        })
+        if (payRes.data.redirect_url) {
+          window.location.href = payRes.data.redirect_url
+        }
+      } else if (payMethod === 'paystack') {
+        // Initiate Paystack payment
+        const payRes = await api.post('/payments/paystack/initialize', {
+          consultation_id: consultationId,
+        })
+        const { access_code } = payRes.data
+        if (!(window as any).PaystackPop) {
+          await new Promise<void>((resolve) => {
+            const s = document.createElement('script')
+            s.src = 'https://js.paystack.co/v1/inline.js'
+            s.onload = () => resolve()
+            document.head.appendChild(s)
+          })
+        }
+        const handler = (window as any).PaystackPop.setup({
+          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder',
+          email: (user as any)?.email || `user@uberhealth.co.ke`,
+          access_code,
+          ref: `ps-${consultationId}-${Date.now()}`,
+          currency: 'KES',
+          callback: async (response: { reference: string }) => {
+            try {
+              await api.post('/payments/paystack/verify', { reference: response.reference, consultation_id: consultationId })
+              setStep('success')
+            } catch {
+              setError('Payment verification failed')
+              setStep('confirm')
+            }
+          },
+          onClose: () => {
+            setStep('confirm')
+          },
+        })
+        handler.openIframe()
+      } else if (payMethod === 'cash') {
+        // Payment at session - just mark as success
+        setTimeout(() => setStep('success'), 1500)
+      } else if (payMethod === 'insurance') {
+        // Insurance flow - just mark as pending
+        setTimeout(() => setStep('success'), 1500)
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Booking failed. Please try again.')
+      setStep('confirm')
     } finally {
       setLoading(false)
     }
@@ -279,6 +333,71 @@ export default function BookConsultation() {
               <p className="text-sm text-amber-800">
                 The <strong>KES 500 booking fee is deducted from your final session cost.</strong> You'll only pay the difference if the session rate exceeds this amount.
               </p>
+            </div>
+
+            <div className="mb-8">
+              <h3 className="font-semibold text-gray-900 mb-4">How will you pay?</h3>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <button
+                  type="button"
+                  onClick={() => setPayMethod('paystack')}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all text-left text-sm ${
+                    payMethod === 'paystack'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${payMethod === 'paystack' ? 'bg-blue-600' : 'bg-gray-100'}`}>
+                    <CreditCard size={14} className={payMethod === 'paystack' ? 'text-white' : 'text-gray-500'} />
+                  </div>
+                  <span className={`font-semibold ${payMethod === 'paystack' ? 'text-blue-900' : 'text-gray-700'}`}>Paystack</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPayMethod('pesapal')}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all text-left text-sm ${
+                    payMethod === 'pesapal'
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${payMethod === 'pesapal' ? 'bg-purple-600' : 'bg-gray-100'}`}>
+                    <Banknote size={14} className={payMethod === 'pesapal' ? 'text-white' : 'text-gray-500'} />
+                  </div>
+                  <span className={`font-semibold ${payMethod === 'pesapal' ? 'text-purple-900' : 'text-gray-700'}`}>PesaPal</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPayMethod('insurance')}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all text-left text-sm ${
+                    payMethod === 'insurance'
+                      ? 'border-teal-500 bg-teal-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${payMethod === 'insurance' ? 'bg-teal-600' : 'bg-gray-100'}`}>
+                    <Heart size={14} className={payMethod === 'insurance' ? 'text-white' : 'text-gray-500'} />
+                  </div>
+                  <span className={`font-semibold ${payMethod === 'insurance' ? 'text-teal-900' : 'text-gray-700'}`}>Insurance</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPayMethod('cash')}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all text-left text-sm ${
+                    payMethod === 'cash'
+                      ? 'border-green-500 bg-green-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${payMethod === 'cash' ? 'bg-green-600' : 'bg-gray-100'}`}>
+                    <Banknote size={14} className={payMethod === 'cash' ? 'text-white' : 'text-gray-500'} />
+                  </div>
+                  <span className={`font-semibold ${payMethod === 'cash' ? 'text-green-900' : 'text-gray-700'}`}>At Session</span>
+                </button>
+              </div>
             </div>
 
             <div className="mt-8 flex gap-3">
