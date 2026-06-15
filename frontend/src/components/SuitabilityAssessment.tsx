@@ -2,14 +2,17 @@ import { useState } from 'react'
 import { AlertCircle, CheckCircle, Phone } from 'lucide-react'
 
 interface SuitabilityAssessmentProps {
+  isOpen?: boolean
   onComplete: (suitable: boolean) => void
   onEmergency?: () => void
 }
 
-export default function SuitabilityAssessment({ onComplete, onEmergency }: SuitabilityAssessmentProps) {
+export default function SuitabilityAssessment({ isOpen = true, onComplete, onEmergency }: SuitabilityAssessmentProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [answers, setAnswers] = useState<boolean[]>([])
   const [showEmergencyWarning, setShowEmergencyWarning] = useState(false)
+
+  if (!isOpen) return null
 
   const questions = [
     {

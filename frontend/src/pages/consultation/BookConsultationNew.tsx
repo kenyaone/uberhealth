@@ -5,6 +5,8 @@ import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
 import type { Professional } from '../../types'
 import ConsentForm from '../../components/ConsentForm'
+import SuitabilityAssessment from '../../components/SuitabilityAssessment'
+import EmergencyContacts from '../../components/EmergencyContacts'
 
 type BookStep = 'mode' | 'consent' | 'fee' | 'confirm' | 'processing' | 'success'
 type SessionMode = 'virtual' | 'physical'
@@ -32,6 +34,8 @@ export default function BookConsultation() {
     share_assessments: false,
   })
   const [consentOpen, setConsentOpen] = useState(false)
+  const [showSuitabilityAssessment, setShowSuitabilityAssessment] = useState(true)
+  const [showEmergencyContacts, setShowEmergencyContacts] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [consultationId, setConsultationId] = useState<string | null>(null)
@@ -45,6 +49,7 @@ export default function BookConsultation() {
   }, [professionalId, navigate])
 
   const handleNext = () => {
+    console.log('[DEBUG] handleNext: current step =', step)
     if (step === 'mode') {
       // Validate mode is selected
       if (!booking.mode) {
@@ -55,6 +60,7 @@ export default function BookConsultation() {
     } else if (step === 'consent') {
       setStep('fee')
     } else if (step === 'fee') {
+      console.log('[DEBUG] Setting step to confirm')
       setStep('confirm')
     }
   }
@@ -486,6 +492,25 @@ export default function BookConsultation() {
         title="Session Consent & Terms"
         description="Please review our session policies, your rights, and privacy protections."
         type={booking.mode}
+      />
+
+      <SuitabilityAssessment
+        isOpen={showSuitabilityAssessment}
+        onComplete={(suitable) => {
+          setShowSuitabilityAssessment(false)
+          if (!suitable) {
+            navigate(-1)
+          }
+        }}
+        onEmergency={() => {
+          setShowSuitabilityAssessment(false)
+          setShowEmergencyContacts(true)
+        }}
+      />
+
+      <EmergencyContacts
+        isOpen={showEmergencyContacts}
+        onClose={() => setShowEmergencyContacts(false)}
       />
     </div>
   )
