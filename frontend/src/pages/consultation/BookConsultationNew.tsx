@@ -76,7 +76,9 @@ export default function BookConsultation() {
         scheduled_at: new Date(booking.scheduled_at).toISOString(),
         duration_minutes: booking.duration_minutes,
         share_assessments: booking.share_assessments,
-        booking_fee: BOOKING_FEE,
+        share_mood_logs: booking.share_assessments,
+        consent_accepted: true,
+        payment_method: payMethod,
       })
 
       const consultationId = res.data.consultation_id
