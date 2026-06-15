@@ -39,4 +39,11 @@ return [
         'key' => env('ANTHROPIC_API_KEY'),
     ],
 
+    'pesapal' => [
+        'consumer_key' => env('PESAPAL_CONSUMER_KEY'),
+        'consumer_secret' => env('PESAPAL_CONSUMER_SECRET'),
+        'env' => env('PESAPAL_ENV', 'sandbox'),
+        'callback_url' => env('PESAPAL_CALLBACK_URL', 'https://api.uberhealth.co.ke/api/payments/pesapal/callback'),
+    ],
+
 ];

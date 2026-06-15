@@ -11,6 +11,7 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPayment;
 use App\Models\Plan;
 use App\Services\MpesaService;
+use App\Services\PesapalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -440,5 +441,121 @@ class PaymentController extends Controller
             ->orderByDesc('created_at')
             ->get();
         return response()->json(['claims' => $claims]);
+    }
+
+    public function pesapalInitiate(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'consultation_id' => 'required|string|exists:consultations,consultation_id',
+            'email' => 'nullable|email',
+            'phone' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        $user = auth('api')->user();
+        $consultation = Consultation::where('consultation_id', $request->consultation_id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$consultation) {
+            return response()->json(['error' => 'Consultation not found'], 404);
+        }
+
+        if ($consultation->status !== 'pending') {
+            return response()->json(['error' => 'Consultation already paid or cancelled'], 422);
+        }
+
+        if ($consultation->payment) {
+            return response()->json(['error' => 'Payment already initiated for this consultation'], 422);
+        }
+
+        try {
+            $pesapal = new PesapalService();
+            $result = $pesapal->initiatePayment(
+                $consultation->consultation_id,
+                $consultation->amount,
+                'UberHealth Consultation - ' . $consultation->consultation_id,
+                config('services.pesapal.callback_url'),
+                url('/payment/success'),
+                $request->phone,
+                $request->email ?? $user->email
+            );
+
+            if (!$result['success']) {
+                return response()->json(['error' => $result['error'] ?? 'Payment initiation failed'], 500);
+            }
+
+            $payment = Payment::create([
+                'consultation_id' => $consultation->id,
+                'amount' => $consultation->amount,
+                'phone' => $request->phone,
+                'payment_method' => 'pesapal',
+                'pesapal_order_tracking_id' => $result['order_tracking_id'],
+                'status' => 'pending',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Redirecting to PesaPal',
+                'payment' => $payment,
+                'redirect_url' => $result['redirect_url'],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('PesaPal payment initiation failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Payment initiation failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function pesapalCallback(Request $request)
+    {
+        Log::info('PesaPal Callback', $request->all());
+
+        $orderTrackingId = $request->input('OrderTrackingId');
+
+        if (!$orderTrackingId) {
+            return response()->json(['error' => 'Missing order tracking ID'], 400);
+        }
+
+        try {
+            $pesapal = new PesapalService();
+            $status = $pesapal->getTransactionStatus($orderTrackingId);
+
+            $payment = Payment::where('pesapal_order_tracking_id', $orderTrackingId)->first();
+
+            if (!$payment) {
+                Log::warning('PesaPal callback: payment not found', ['order_tracking_id' => $orderTrackingId]);
+                return response()->json(['error' => 'Payment not found'], 404);
+            }
+
+            if ($status['payment_status_description'] === 'COMPLETED') {
+                $payment->update(['status' => 'completed']);
+                $consultation = $payment->consultation;
+                $consultation->update(['status' => 'confirmed']);
+
+                // Calculate and create payout for professional
+                $amount = $consultation->amount;
+                $commission = $amount * self::COMMISSION_RATE;
+                $payout = $amount - $commission;
+
+                ProfessionalPayout::create([
+                    'professional_id' => $consultation->professional_id,
+                    'payment_id' => $payment->id,
+                    'amount' => $payout,
+                    'status' => 'pending',
+                ]);
+
+                $consultation->professional->increment('total_sessions');
+            } elseif (in_array($status['payment_status_description'], ['FAILED', 'CANCELLED'])) {
+                $payment->update(['status' => 'failed']);
+            }
+
+            return response()->json(['success' => true, 'message' => 'Payment processed']);
+        } catch (\Exception $e) {
+            Log::error('PesaPal callback processing failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Callback processing failed'], 500);
+        }
     }
 }

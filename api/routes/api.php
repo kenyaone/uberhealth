@@ -58,6 +58,10 @@ Route::post('/payments/subscription/callback', [PaymentController::class, 'subsc
 Route::post('/payments/b2c/result', [PaymentController::class, 'b2cResult']);
 Route::post('/payments/b2c/timeout', [PaymentController::class, 'b2cTimeout']);
 
+// PesaPal callbacks (called by PesaPal, no token)
+Route::post('/payments/pesapal/callback', [PaymentController::class, 'pesapalCallback']);
+Route::get('/payments/pesapal/callback', [PaymentController::class, 'pesapalCallback']);
+
 // Assessment questions — public so TakeAssessment page works before submitting
 Route::get('/assessments/questions/{type}', [AssessmentController::class, 'questions']);
 
@@ -138,6 +142,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/payments/subscription/initiate', [PaymentController::class, 'subscriptionInitiate']);
     Route::post('/payments/paystack/initialize', [PaymentController::class, 'paystackInitialize']);
     Route::post('/payments/paystack/verify', [PaymentController::class, 'paystackVerify']);
+    Route::post('/payments/pesapal/initiate', [PaymentController::class, 'pesapalInitiate']);
 
     // Crisis
     Route::post('/crisis/report', [CrisisController::class, 'report']);

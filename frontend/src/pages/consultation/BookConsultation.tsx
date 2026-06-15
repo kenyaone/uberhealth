@@ -7,7 +7,7 @@ import type { Professional } from '../../types'
 import { Shield, CheckCircle, Loader2, Clock, Video, CreditCard, Heart, Banknote } from 'lucide-react'
 
 type Step = 'details' | 'paying' | 'success' | 'failed' | 'insurance_success' | 'cash_success'
-type PayMethod = 'paystack' | 'insurance' | 'cash'
+type PayMethod = 'paystack' | 'pesapal' | 'insurance' | 'cash'
 
 interface BookForm {
   scheduled_at: string
@@ -179,6 +179,35 @@ export default function BookConsultation() {
     }
   }
 
+  const onSubmitPesapal = async (data: BookForm) => {
+    setLoading(true)
+    setError('')
+    try {
+      const c = await createBooking(data)
+      setConsultationId(c.consultation_id)
+      setNumericId(c.id)
+      setAmount(c.amount)
+
+      const initRes = await api.post('/payments/pesapal/initiate', {
+        consultation_id: c.consultation_id,
+        phone: (user as any)?.phone_number,
+        email: (user as any)?.email,
+      })
+
+      if (initRes.data.redirect_url) {
+        window.location.href = initRes.data.redirect_url
+      } else {
+        setError('Payment initiation failed. Please try again.')
+        setStep('details')
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Payment initiation failed. Please try again.')
+      setStep('details')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const onSubmitCash = async (data: BookForm) => {
     setLoading(true)
     setError('')
@@ -333,7 +362,7 @@ export default function BookConsultation() {
       {/* ── PAYMENT METHOD SELECTOR ── */}
       <div className="card">
         <h2 className="font-semibold text-gray-900 mb-3">How will you pay?</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <button
             type="button"
             onClick={() => setPayMethod('paystack')}
@@ -348,7 +377,25 @@ export default function BookConsultation() {
             </div>
             <div>
               <div className={`text-sm font-semibold ${payMethod === 'paystack' ? 'text-blue-900' : 'text-gray-700'}`}>Paystack</div>
-              <div className="text-xs text-gray-400">Card · Bank transfer</div>
+              <div className="text-xs text-gray-400">Card · Bank</div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPayMethod('pesapal')}
+            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
+              payMethod === 'pesapal'
+                ? 'border-purple-500 bg-purple-50'
+                : 'border-gray-200 bg-white hover:border-gray-300'
+            }`}
+          >
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${payMethod === 'pesapal' ? 'bg-purple-600' : 'bg-gray-100'}`}>
+              <Banknote size={16} className={payMethod === 'pesapal' ? 'text-white' : 'text-gray-500'} />
+            </div>
+            <div>
+              <div className={`text-sm font-semibold ${payMethod === 'pesapal' ? 'text-purple-900' : 'text-gray-700'}`}>PesaPal</div>
+              <div className="text-xs text-gray-400">Mobile · Wallet</div>
             </div>
           </button>
 
@@ -365,8 +412,8 @@ export default function BookConsultation() {
               <Heart size={16} className={payMethod === 'insurance' ? 'text-white' : 'text-gray-500'} />
             </div>
             <div>
-              <div className={`text-sm font-semibold ${payMethod === 'insurance' ? 'text-teal-900' : 'text-gray-700'}`}>Insurance / SHA</div>
-              <div className="text-xs text-gray-400">SHA, AAR, Jubilee…</div>
+              <div className={`text-sm font-semibold ${payMethod === 'insurance' ? 'text-teal-900' : 'text-gray-700'}`}>Insurance</div>
+              <div className="text-xs text-gray-400">SHA, AAR, etc</div>
             </div>
           </button>
 
@@ -383,8 +430,8 @@ export default function BookConsultation() {
               <Banknote size={16} className={payMethod === 'cash' ? 'text-white' : 'text-gray-500'} />
             </div>
             <div>
-              <div className={`text-sm font-semibold ${payMethod === 'cash' ? 'text-green-900' : 'text-gray-700'}`}>Pay at Session</div>
-              <div className="text-xs text-gray-400">Cash · In person</div>
+              <div className={`text-sm font-semibold ${payMethod === 'cash' ? 'text-green-900' : 'text-gray-700'}`}>At Session</div>
+              <div className="text-xs text-gray-400">Cash · Later</div>
             </div>
           </button>
         </div>
@@ -452,6 +499,72 @@ export default function BookConsultation() {
             {loading
               ? <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /> Processing…</span>
               : 'Book & Pay with Paystack'
+            }
+          </button>
+        </form>
+
+      ) : payMethod === 'pesapal' ? (
+        /* ── PESAPAL FLOW ── */
+        <form onSubmit={handleSubmit(onSubmitPesapal)} className="space-y-5">
+          <div className="card space-y-4">
+            <h2 className="font-semibold text-gray-900">Session Details</h2>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date &amp; Time</label>
+              <input
+                {...register('scheduled_at', { required: 'Please select a date and time' })}
+                type="datetime-local"
+                min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
+                className="input-field"
+              />
+              {errors.scheduled_at && <p className="text-red-500 text-xs mt-1">{errors.scheduled_at.message}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+              <select {...register('duration_minutes', { valueAsNumber: true })} className="input-field">
+                <option value={30}>30 minutes</option>
+                <option value={60}>60 minutes (recommended)</option>
+                <option value={90}>90 minutes</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="card space-y-3">
+            <h2 className="font-semibold text-gray-900">Privacy Settings</h2>
+            {[
+              { name: 'share_assessments', label: 'Share my assessment results with therapist', desc: 'Helps them understand your condition better' },
+              { name: 'share_mood_logs', label: 'Share my mood logs with therapist', desc: 'Shows your recent emotional patterns' },
+            ].map(({ name, label, desc }) => (
+              <label key={name} className="flex items-start gap-3 cursor-pointer">
+                <input {...register(name as keyof BookForm)} type="checkbox" className="mt-1 rounded border-gray-300 text-primary-600" />
+                <div>
+                  <div className="text-sm font-medium text-gray-900">{label}</div>
+                  <div className="text-xs text-gray-500">{desc}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          <div className="card space-y-3">
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+              <Banknote size={16} className="text-purple-600" /> Payment via PesaPal
+            </h2>
+            <div className="flex items-start gap-2 text-sm text-gray-600 bg-purple-50 border border-purple-200 rounded-lg p-3">
+              <Shield size={14} className="flex-shrink-0 mt-0.5 text-purple-600" />
+              <span>Secure payment via PesaPal. Use your mobile money, wallet, or bank account.</span>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">Amount to pay</span>
+                <span className="font-semibold text-teal-700">KES {computedAmount.toLocaleString()}</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">You'll be redirected to PesaPal to complete payment.</p>
+            </div>
+          </div>
+
+          <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base">
+            {loading
+              ? <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin" /> Processing…</span>
+              : 'Book & Pay with PesaPal'
             }
           </button>
         </form>
