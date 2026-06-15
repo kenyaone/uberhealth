@@ -41,12 +41,23 @@ export default function ConsentForm({
             {type === 'virtual' && (
               <>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Virtual Session Details</h3>
+                  <h3 className="font-semibold text-gray-900 mb-3">Benefits of Tele-Mental Health</h3>
                   <ul className="text-sm text-gray-600 space-y-2">
+                    <li>✓ Convenient access from home</li>
+                    <li>✓ Reduced travel time and costs</li>
                     <li>✓ Encrypted video call via Jitsi</li>
-                    <li>✓ Private room • No recording without permission</li>
-                    <li>✓ Session feedback available after</li>
+                    <li>✓ Flexible scheduling options</li>
                     <li>✓ Therapist is KMPDC & CPB verified</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-3">Limitations of Tele-Mental Health</h3>
+                  <ul className="text-sm text-gray-600 space-y-2">
+                    <li>⚠ Cannot handle medical emergencies directly</li>
+                    <li>⚠ Requires stable internet connection</li>
+                    <li>⚠ Limited physical assessment capability</li>
+                    <li>⚠ May not suit severe mental health crises</li>
+                    <li>⚠ Requires appropriate private space</li>
                   </ul>
                 </div>
               </>
@@ -67,12 +78,24 @@ export default function ConsentForm({
             )}
 
             <div>
-              <h3 className="font-semibold text-gray-900 mb-3">Privacy & Data</h3>
+              <h3 className="font-semibold text-gray-900 mb-3">Confidentiality & Mandatory Reporting</h3>
               <ul className="text-sm text-gray-600 space-y-2">
-                <li>✓ Your identity remains confidential</li>
-                <li>✓ Session notes are encrypted</li>
+                <li>✓ Your information remains confidential</li>
+                <li>✓ Session notes are encrypted and secure</li>
                 <li>✓ No third-party sharing without consent</li>
-                <li>✓ GDPR & local data protection compliant</li>
+                <li className="text-red-600 font-medium">⚠ We MUST report: threats to harm self/others, child abuse, or severe neglect</li>
+                <li>✓ You have right to access your records</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">Recording & Data Management</h3>
+              <ul className="text-sm text-gray-600 space-y-2">
+                <li>✓ Sessions are NOT recorded by default</li>
+                <li>✓ Recording only with explicit written consent</li>
+                <li>✓ Encrypted storage with access controls</li>
+                <li>✓ Data retained per health regulations</li>
+                <li>✓ GDPR & Kenyan data protection compliant</li>
               </ul>
             </div>
 
@@ -83,6 +106,17 @@ export default function ConsentForm({
                 <li>✓ You can request a different therapist</li>
                 <li>✓ You have access to your own records</li>
                 <li>✓ You can withdraw consent anytime</li>
+                <li>✓ You can file a complaint if unsatisfied</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">In Case of Emergency</h3>
+              <ul className="text-sm text-gray-600 space-y-2">
+                <li>🚨 If in crisis or suicidal, call emergency services immediately</li>
+                <li>📞 Kenya Red Cross Helpline: +254-719-241-214</li>
+                <li>📞 Mental Health Kenya: +254-711-037-999</li>
+                <li>📞 Befrienders Kenya: +254-722-178-177</li>
               </ul>
             </div>
           </div>
